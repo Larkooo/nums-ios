@@ -104,7 +104,7 @@ class DojoManager: ObservableObject {
     
     // Contract addresses (from Constants)
     private let tokenContractAddress = Constants.numsAddress
-    private let gameContractAddress = Constants.gameMintingAddress // Used for "Minted By" filter
+    private let gameContractAddress = Constants.gameAddress
     
     // Subscription tracking
     private var tournamentSubscriptionId: UInt64?
