@@ -139,18 +139,6 @@ struct MainView: View {
                             .cornerRadius(12)
                     }
                     
-                    // Info button (How to Play)
-                    Button(action: {
-                        showHowToPlay = true
-                    }) {
-                        Image(systemName: "info.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.white)
-                            .frame(width: 50, height: 50)
-                            .background(Color.white.opacity(0.1))
-                            .cornerRadius(12)
-                    }
-                    
                     // Sound toggle button
                     Button(action: {
                         isSoundEnabled.toggle()
@@ -264,7 +252,9 @@ struct MainView: View {
                         
                         Spacer()
                         
-                        Button(action: {}) {
+                        Button(action: {
+                            showHowToPlay = true
+                        }) {
                             Image(systemName: "info.circle")
                                 .font(.title2)
                                 .foregroundColor(.white)
