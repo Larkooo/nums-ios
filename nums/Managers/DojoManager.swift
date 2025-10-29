@@ -760,9 +760,13 @@ class DojoManager: ObservableObject {
             // Parse game models and map by token ID
             var modelsMap: [String: GameModel] = [:]
             for entity in entitiesPage.items {
-                if let gameModel = parseGameModel(from: entity) {
-                    modelsMap[gameModel.tokenId] = gameModel
-                    print("✅ Found game model for token: \(gameModel.tokenId)")
+                // Try to parse each entity (parseGameModel will check if ID matches games we're looking for)
+                for game in games {
+                    if let gameModel = parseGameModel(from: entity, gameId: game.tokenId) {
+                        modelsMap[game.tokenId] = gameModel
+                        print("✅ Found game model for token: \(game.tokenId)")
+                        break // Found this game's model, move to next entity
+                    }
                 }
             }
             
@@ -913,26 +917,6 @@ class DojoManager: ObservableObject {
         )
     }
     
-    private func parseGameModel(from entity: Entity) -> GameModel? {
-        // Parse NUMS-Game entity
-        let models = entity.models
-        
-        // Extract token_id - this is the key field to match with Game.tokenId
-        guard let tokenIdString = extractString(from: models, key: "token_id") else {
-            print("⚠️ Game entity missing token_id")
-            return nil
-        }
-        
-        let score = extractInt(from: models, key: "score")
-        let state = extractString(from: models, key: "state")
-        
-        return GameModel(
-            id: tokenIdString,
-            tokenId: tokenIdString,
-            score: score,
-            state: state
-        )
-    }
     
     // Helper functions to extract values from model structs
     private func extractInt(from models: [Struct], key: String) -> Int? {
@@ -1037,6 +1021,56 @@ class DojoManager: ObservableObject {
             default: return nil
             }
         default: return nil
+        }
+    }
+    
+    private func extractUInt8FromTy(_ ty: Ty) -> UInt8 {
+        switch ty {
+        case .primitive(let primitive):
+            switch primitive {
+            case .u8(let value): return value
+            default: return 0
+            }
+        default: return 0
+        }
+    }
+    
+    private func extractUInt16FromTy(_ ty: Ty) -> UInt16 {
+        switch ty {
+        case .primitive(let primitive):
+            switch primitive {
+            case .u16(let value): return value
+            case .u8(let value): return UInt16(value)
+            default: return 0
+            }
+        default: return 0
+        }
+    }
+    
+    private func extractUInt32FromTy(_ ty: Ty) -> UInt32 {
+        switch ty {
+        case .primitive(let primitive):
+            switch primitive {
+            case .u32(let value): return value
+            case .u16(let value): return UInt32(value)
+            case .u8(let value): return UInt32(value)
+            default: return 0
+            }
+        default: return 0
+        }
+    }
+    
+    private func extractUInt64FromTy(_ ty: Ty) -> UInt64 {
+        switch ty {
+        case .primitive(let primitive):
+            switch primitive {
+            case .u64(let value): return value
+            case .u32(let value): return UInt64(value)
+            case .u16(let value): return UInt64(value)
+            case .u8(let value): return UInt64(value)
+            default: return 0
+            }
+        default: return 0
         }
     }
     
@@ -1176,33 +1210,33 @@ class DojoManager: ObservableObject {
                 for child in model.children {
                     switch child.name {
                     case "id":
-                        tokenId = extractUInt64(from: child.ty)
+                        tokenId = extractUInt64FromTy(child.ty)
                     case "over":
-                        over = extractBool(from: child.ty)
+                        over = extractBoolFromTy(child.ty) ?? false
                     case "claimed":
-                        claimed = extractBool(from: child.ty)
+                        claimed = extractBoolFromTy(child.ty) ?? false
                     case "level":
-                        level = extractUInt8(from: child.ty)
+                        level = extractUInt8FromTy(child.ty)
                     case "slot_count":
-                        slotCount = extractUInt8(from: child.ty)
+                        slotCount = extractUInt8FromTy(child.ty)
                     case "slot_min":
-                        slotMin = extractUInt16(from: child.ty)
+                        slotMin = extractUInt16FromTy(child.ty)
                     case "slot_max":
-                        slotMax = extractUInt16(from: child.ty)
+                        slotMax = extractUInt16FromTy(child.ty)
                     case "number":
-                        number = extractUInt16(from: child.ty)
+                        number = extractUInt16FromTy(child.ty)
                     case "next_number":
-                        nextNumber = extractUInt16(from: child.ty)
+                        nextNumber = extractUInt16FromTy(child.ty)
                     case "tournament_id":
-                        tournamentId = extractUInt16(from: child.ty)
+                        tournamentId = extractUInt16FromTy(child.ty)
                     case "powers":
-                        powers = extractUInt16(from: child.ty)
+                        powers = extractUInt16FromTy(child.ty)
                     case "reward":
-                        reward = extractUInt32(from: child.ty)
+                        reward = extractUInt32FromTy(child.ty)
                     case "score":
-                        score = extractUInt32(from: child.ty)
+                        score = extractUInt32FromTy(child.ty)
                     case "slots":
-                        slots = extractString(from: child.ty)
+                        slots = extractStringFromTy(child.ty) ?? ""
                     default:
                         break
                     }
@@ -1286,46 +1320,6 @@ class DojoManager: ObservableObject {
         }
     }
     
-    // MARK: - Helper functions for extracting unsigned integers
-    
-    private func extractUInt8(from ty: Ty) -> UInt8 {
-        if let primitive = ty.primitive, let u8Value = primitive.u8 {
-            return u8Value
-        }
-        return 0
-    }
-    
-    private func extractUInt16(from ty: Ty) -> UInt16 {
-        if let primitive = ty.primitive, let u16Value = primitive.u16 {
-            return u16Value
-        }
-        return 0
-    }
-    
-    private func extractUInt32(from ty: Ty) -> UInt32 {
-        if let primitive = ty.primitive, let u32Value = primitive.u32 {
-            return u32Value
-        }
-        return 0
-    }
-    
-    private func extractUInt64(from ty: Ty) -> UInt64 {
-        if let primitive = ty.primitive {
-            if let u64Value = primitive.u64 {
-                return u64Value
-            }
-            if let u32Value = primitive.u32 {
-                return UInt64(u32Value)
-            }
-            if let u16Value = primitive.u16 {
-                return UInt64(u16Value)
-            }
-            if let u8Value = primitive.u8 {
-                return UInt64(u8Value)
-            }
-        }
-        return 0
-    }
 }
 
 
