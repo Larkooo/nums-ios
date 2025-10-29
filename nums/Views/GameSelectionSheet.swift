@@ -3,6 +3,32 @@ import SwiftUI
 struct GameSelectionSheet: View {
     @EnvironmentObject var dojoManager: DojoManager
     @Environment(\.dismiss) var dismiss
+    @State private var currentTime = Date()
+    
+    private var tournamentName: String {
+        guard let tournament = dojoManager.selectedTournament else {
+            return "Tournament"
+        }
+        return "TOURNAMENT #\(tournament.id)"
+    }
+    
+    private var timeRemaining: String {
+        guard let tournament = dojoManager.selectedTournament else {
+            return "00:00:00"
+        }
+        
+        let remaining = tournament.endDate.timeIntervalSince(currentTime)
+        
+        if remaining <= 0 {
+            return "ENDED"
+        }
+        
+        let hours = Int(remaining) / 3600
+        let minutes = (Int(remaining) % 3600) / 60
+        let seconds = Int(remaining) % 60
+        
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    }
     
     var body: some View {
         ZStack {
@@ -13,9 +39,14 @@ struct GameSelectionSheet: View {
             VStack(spacing: 0) {
                 // Custom Header with Close Button
                 HStack {
-                    Text("Select Game")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.white)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Enter \(tournamentName)")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.white)
+                        Text("Tournament ends in \(timeRemaining)")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
                     
                     Spacer()
                     
@@ -69,6 +100,12 @@ struct GameSelectionSheet: View {
                 }
             }
         }
+        .onAppear {
+            // Start timer to update countdown every second
+            Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+                currentTime = Date()
+            }
+        }
     }
 }
 
@@ -83,6 +120,19 @@ struct GameRow: View {
     
     private var gameModel: GameModel? {
         dojoManager.gameModels[game.tokenId]
+    }
+    
+    // Convert hex token ID to decimal
+    private var gameIdDecimal: Int {
+        // Remove "0x" prefix if present
+        let hexString = game.tokenId.hasPrefix("0x") ? String(game.tokenId.dropFirst(2)) : game.tokenId
+        // Convert hex to decimal
+        return Int(hexString, radix: 16) ?? 0
+    }
+    
+    // Get score from model or default to 0
+    private var score: Int {
+        gameModel?.score ?? 0
     }
     
     var body: some View {
@@ -100,19 +150,13 @@ struct GameRow: View {
             
             // Game info
             VStack(alignment: .leading, spacing: 4) {
-                Text("Game #\(game.tokenId.suffix(6))")
+                Text("Game #\(String(format: "%04d", gameIdDecimal))")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(.white)
                 
-                if let model = gameModel {
-                    Text("Score: \(model.score ?? 0)")
-                        .font(.system(size: 14))
-                        .foregroundColor(.white.opacity(0.7))
-                } else {
-                    Text("New Game")
-                        .font(.system(size: 14))
-                        .foregroundColor(.green.opacity(0.8))
-                }
+                Text("Score: \(score)")
+                    .font(.system(size: 14))
+                    .foregroundColor(.white.opacity(0.7))
             }
             
             Spacer()
