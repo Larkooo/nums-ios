@@ -1,6 +1,26 @@
 import Foundation
 import Combine
 
+// MARK: - Token Balance Callback
+
+class TokenBalanceCallback: TokenBalanceUpdateCallback {
+    private let updateHandler: (TokenBalance) -> Void
+    
+    init(onUpdate: @escaping (TokenBalance) -> Void) {
+        self.updateHandler = onUpdate
+    }
+    
+    func onUpdate(balance: TokenBalance) {
+        updateHandler(balance)
+    }
+    
+    func onError(error: String) {
+        print("❌ Token balance subscription error: \(error)")
+    }
+}
+
+// MARK: - Models
+
 // Tournament Model
 struct Tournament: Identifiable {
     let id: Int
@@ -354,23 +374,38 @@ class DojoManager: ObservableObject {
         do {
             print("🔔 Subscribing to token balance updates for \(accountAddress)...")
             
-            // Create subscription query for token balance
-            let query = TokenBalanceQuery(
+            // Create callback for token balance updates
+            let callback = TokenBalanceCallback { [weak self] balance in
+                Task { @MainActor in
+                    guard let self = self else { return }
+                    
+                    // Convert balance from hex/string to BInt
+                    let balanceString = balance.balance.hasPrefix("0x") ?
+                        String(balance.balance.dropFirst(2)) : balance.balance
+                    
+                    if let balanceValue = BInt(balanceString, radix: 16) ?? BInt(balanceString, radix: 10) {
+                        // Convert from WEI to tokens (divide by 10^18)
+                        let divisor = BInt(10).power(18)
+                        let tokenAmount = balanceValue / divisor
+                        
+                        self.tokenBalance = tokenAmount
+                        print("💰 Token balance updated: \(tokenAmount) NUMS")
+                    }
+                }
+            }
+            
+            // Subscribe to balance updates
+            let subscriptionId = try client.subscribeTokenBalanceUpdates(
                 contractAddresses: [tokenContractAddress],
                 accountAddresses: [accountAddress],
                 tokenIds: [],
-                pagination: Pagination(
-                    cursor: nil,
-                    limit: 1,
-                    direction: .forward,
-                    orderBy: []
-                )
+                callback: callback
             )
             
-            // TODO: Implement subscription when available in the SDK
-            // tokenBalanceSubscriptionId = try await client.subscribeTokenBalances(query: query)
+            // Store subscription ID for cleanup later
+            tokenBalanceSubscriptionId = subscriptionId
             
-            print("✅ Subscribed to token balance for \(accountAddress)")
+            print("✅ Subscribed to token balance for \(accountAddress) (ID: \(subscriptionId))")
         } catch {
             print("❌ Token balance subscription error: \(error)")
         }

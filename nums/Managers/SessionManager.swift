@@ -43,7 +43,6 @@ class SessionManager: ObservableObject {
     
     // Background subscription
     private var subscriptionTask: Task<Void, Never>?
-    private var transactionPollingTask: Task<Void, Never>?
     
     // Session metadata
     @Published var sessionUsername: String?
@@ -434,8 +433,8 @@ class SessionManager: ObservableObject {
             isTransactionConfirmed = false
             showTransactionCard = true
             
-            // Start polling for confirmation
-            startTransactionPolling(txHash: txHash)
+            print("✅ Transaction submitted: \(txHash)")
+            print("💡 Token balance will update automatically via Torii subscription")
             
         } catch {
             let errorStr = error.localizedDescription
@@ -453,42 +452,10 @@ class SessionManager: ObservableObject {
         isLoading = false
     }
     
-    func startTransactionPolling(txHash: String) {
-        // Cancel any existing polling
-        transactionPollingTask?.cancel()
-        
-        transactionPollingTask = Task.detached(priority: .userInitiated) { [weak self] in
-            guard let self = self else { return }
-            
-            // Poll every 2 seconds for up to 5 minutes
-            for _ in 0..<150 {
-                if Task.isCancelled { return }
-                
-                // Wait 2 seconds between checks
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                
-                // Check transaction status
-                // For now, we'll simulate confirmation after 10 seconds
-                // In production, you'd call a real API to check transaction status
-                try? await Task.sleep(nanoseconds: 8_000_000_000)
-                
-                if Task.isCancelled { return }
-                
-                // Mark as confirmed
-                await MainActor.run {
-                    print("✅ Transaction confirmed: \(txHash)")
-                    self.isTransactionConfirmed = true
-                }
-                
-                return
-            }
-        }
-    }
-    
     func dismissTransactionCard() {
         showTransactionCard = false
-        transactionPollingTask?.cancel()
-        transactionPollingTask = nil
+        currentTransactionHash = ""
+        isTransactionConfirmed = false
     }
     
     func executeTransfer(to recipient: String, amount: String) async {
@@ -665,7 +632,6 @@ class SessionManager: ObservableObject {
     
     deinit {
         subscriptionTask?.cancel()
-        transactionPollingTask?.cancel()
     }
 }
 
