@@ -6,8 +6,29 @@ struct Tournament: Identifiable {
     let id: Int
     let powers: Int
     let entryCount: Int
-    let startTime: String
-    let endTime: String
+    let startTime: UInt64 // Unix timestamp
+    let endTime: UInt64 // Unix timestamp
+    
+    // Helper to get start time as Date
+    var startDate: Date {
+        Date(timeIntervalSince1970: TimeInterval(startTime))
+    }
+    
+    // Helper to get end time as Date
+    var endDate: Date {
+        Date(timeIntervalSince1970: TimeInterval(endTime))
+    }
+    
+    // Helper to check if tournament is active
+    var isActive: Bool {
+        let now = Date()
+        return now >= startDate && now <= endDate
+    }
+    
+    // Helper to get time remaining
+    var timeRemaining: TimeInterval {
+        max(0, endDate.timeIntervalSinceNow)
+    }
 }
 
 // Leaderboard Entry Model
@@ -628,8 +649,16 @@ class DojoManager: ObservableObject {
         guard let id = extractInt(from: models, key: "id") else { return nil }
         let powers = extractInt(from: models, key: "powers") ?? 0
         let entryCount = extractInt(from: models, key: "entry_count") ?? 0
-        let startTime = extractString(from: models, key: "start_time") ?? ""
-        let endTime = extractString(from: models, key: "end_time") ?? ""
+        
+        // Extract timestamps as UInt64
+        guard let startTime = extractU64(from: models, key: "start_time") else {
+            print("⚠️ Tournament missing start_time")
+            return nil
+        }
+        guard let endTime = extractU64(from: models, key: "end_time") else {
+            print("⚠️ Tournament missing end_time")
+            return nil
+        }
         
         return Tournament(
             id: id,
@@ -716,6 +745,17 @@ class DojoManager: ObservableObject {
         return nil
     }
     
+    private func extractU64(from models: [Struct], key: String) -> UInt64? {
+        for model in models {
+            for member in model.children {
+                if member.name == key {
+                    return extractU64FromTy(member.ty)
+                }
+            }
+        }
+        return nil
+    }
+    
     private func extractDate(from models: [Struct], key: String) -> Date? {
         guard let timestamp = extractInt(from: models, key: key) else { return nil }
         return Date(timeIntervalSince1970: TimeInterval(timestamp))
@@ -760,6 +800,17 @@ class DojoManager: ObservableObject {
         case .primitive(let primitive):
             switch primitive {
             case .bool(let value): return value
+            default: return nil
+            }
+        default: return nil
+        }
+    }
+    
+    private func extractU64FromTy(_ ty: Ty) -> UInt64? {
+        switch ty {
+        case .primitive(let primitive):
+            switch primitive {
+            case .u64(let value): return value
             default: return nil
             }
         default: return nil

@@ -18,6 +18,7 @@ struct MainView: View {
     @State private var showSessionInfo = false
     @State private var showGameSelection = false
     @State private var isSoundEnabled = true
+    @State private var currentTime = Date() // For updating countdown timer
     
     // Check if session is valid (not expired and not revoked)
     private var isSessionValid: Bool {
@@ -69,9 +70,21 @@ struct MainView: View {
         guard let tournament = dojoManager.selectedTournament else {
             return "00:00:00"
         }
-        // Parse end_time string and calculate remaining time
-        // For now, return placeholder
-        return "00:00:00"
+        
+        // Use currentTime to trigger updates every second
+        let remaining = tournament.endDate.timeIntervalSince(currentTime)
+        
+        // If tournament has ended
+        if remaining <= 0 {
+            return "ENDED"
+        }
+        
+        // Calculate hours, minutes, seconds
+        let hours = Int(remaining) / 3600
+        let minutes = (Int(remaining) % 3600) / 60
+        let seconds = Int(remaining) % 60
+        
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
     
     // Leaderboard data from DojoManager (shows player leaderboard if available)
@@ -453,6 +466,11 @@ struct MainView: View {
                     // Fetch games
                     await dojoManager.fetchGames(for: address)
                 }
+            }
+            
+            // Start timer to update countdown every second
+            Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+                currentTime = Date()
             }
         }
         .onChange(of: dojoManager.isConnected) { isConnected in
