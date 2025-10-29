@@ -249,7 +249,7 @@ class DojoManager: ObservableObject {
                         String(tokenBalance.balance.dropFirst(2)) : tokenBalance.balance
                     if let balanceWei = BInt(balanceString, radix: 16) ?? BInt(balanceString, radix: 10) {
                         // Convert from WEI to tokens (divide by 10^18)
-                        let divisor = BInt(10).power(18)
+                        let divisor = BInt(10) ** 18
                         self.tokenBalance = balanceWei / divisor
                         print("✅ Token balance (WEI): \(balanceWei)")
                         print("✅ Token balance (tokens): \(self.tokenBalance)")

@@ -105,10 +105,13 @@ struct MainView: View {
                             .cornerRadius(12)
                     }
                     
-                    // Sound icon
+                    // NUMS icon button
                     Button(action: {}) {
-                        Image(systemName: "speaker.wave.2.fill")
-                            .font(.title3)
+                        Image("nums-icon")
+                            .resizable()
+                            .renderingMode(.template)
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 24, height: 34)
                             .foregroundColor(.white)
                             .frame(width: 50, height: 50)
                             .background(Color.white.opacity(0.1))
@@ -117,11 +120,6 @@ struct MainView: View {
                     
                     // Balance
                     HStack(spacing: 12) {
-                        Image("nums-icon")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 50, height: 22)
-                        
                         if dojoManager.isLoadingBalance {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
