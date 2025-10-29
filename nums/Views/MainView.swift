@@ -412,38 +412,44 @@ struct MainView: View {
                 sessionManager.loadPersistedSession()
             }
             
-            // Fetch token balance and subscribe if session is active AND Torii is connected
+            // Fetch token balance, games and subscribe if session is active AND Torii is connected
             if isSessionValid, let address = sessionManager.sessionAddress, dojoManager.isConnected {
                 Task {
                     // Fetch initial balance
                     await dojoManager.fetchTokenBalance(for: address)
                     // Subscribe to balance updates
                     await dojoManager.subscribeToTokenBalance(for: address)
+                    // Fetch games
+                    await dojoManager.fetchGames(for: address)
                 }
             }
         }
         .onChange(of: dojoManager.isConnected) { isConnected in
-            // When Torii client connects, fetch balance if we have a valid session
+            // When Torii client connects, fetch balance and games if we have a valid session
             if isConnected, isSessionValid, let address = sessionManager.sessionAddress {
                 Task {
-                    print("🔄 Torii connected - fetching balance for session")
+                    print("🔄 Torii connected - fetching balance and games for session")
                     await dojoManager.fetchTokenBalance(for: address)
                     await dojoManager.subscribeToTokenBalance(for: address)
+                    await dojoManager.fetchGames(for: address)
                 }
             }
         }
         .onChange(of: sessionManager.sessionAddress) { newAddress in
-            // Fetch balance and subscribe when session address changes (only if Torii is connected)
+            // Fetch balance, games and subscribe when session address changes (only if Torii is connected)
             if isSessionValid, let address = newAddress, dojoManager.isConnected {
                 Task {
                     // Fetch initial balance
                     await dojoManager.fetchTokenBalance(for: address)
                     // Subscribe to balance updates
                     await dojoManager.subscribeToTokenBalance(for: address)
+                    // Fetch games
+                    await dojoManager.fetchGames(for: address)
                 }
             } else {
-                // Reset balance when disconnected
+                // Reset balance and games when disconnected
                 dojoManager.tokenBalance = 0
+                dojoManager.games = []
             }
         }
     }

@@ -19,6 +19,14 @@ struct LeaderboardPlayer: Identifiable {
     let games: String
 }
 
+// Game Model
+struct Game: Identifiable {
+    let id: String // token_id
+    let tokenId: String
+    let contractAddress: String
+    let balance: String
+}
+
 @MainActor
 class DojoManager: ObservableObject {
     // Dojo State
@@ -42,7 +50,12 @@ class DojoManager: ObservableObject {
     @Published var tokenBalance: BInt = 0
     @Published var isLoadingBalance = false
     
+    // Games
+    @Published var games: [Game] = []
+    @Published var isLoadingGames = false
+    
     private let tokenContractAddress = "0xe69b167a18be231ef14ca474e29cf6356333038162077b551a17d25d166af" // Nums
+    private let gameContractAddress = "0x277902ea7ce3bbdc25304f3cf1caaed7b6f22d722a8b16827ce11fd5fcb8ac6" // Game contract
     // Subscription tracking
     private var tournamentSubscriptionId: UInt64?
     private var leaderboardSubscriptionId: UInt64?
@@ -249,7 +262,7 @@ class DojoManager: ObservableObject {
                         String(tokenBalance.balance.dropFirst(2)) : tokenBalance.balance
                     if let balanceWei = BInt(balanceString, radix: 16) ?? BInt(balanceString, radix: 10) {
                         // Convert from WEI to tokens (divide by 10^18)
-                        let divisor = BInt(10) ** 18
+                        let divisor = BInt(10).power(18)
                         self.tokenBalance = balanceWei / divisor
                         print("✅ Token balance (WEI): \(balanceWei)")
                         print("✅ Token balance (tokens): \(self.tokenBalance)")
@@ -307,6 +320,120 @@ class DojoManager: ObservableObject {
             print("✅ Subscribed to token balance for \(accountAddress)")
         } catch {
             print("❌ Token balance subscription error: \(error)")
+        }
+    }
+    
+    func fetchGames(for accountAddress: String) async {
+        // Validate that we have a proper address before fetching
+        guard !accountAddress.isEmpty, accountAddress.hasPrefix("0x") else {
+            print("⚠️ Invalid account address: \(accountAddress)")
+            await MainActor.run {
+                self.games = []
+            }
+            return
+        }
+        
+        guard let client = toriiClient else {
+            print("⚠️ Torii client not initialized")
+            return
+        }
+        
+        await MainActor.run {
+            self.isLoadingGames = true
+        }
+        
+        do {
+            print("🎮 Fetching games for \(accountAddress)...")
+            
+            // Step 1: Fetch all token balances for the account to get token IDs with non-zero balance
+            let balanceQuery = TokenBalanceQuery(
+                contractAddresses: [], // Fetch all contracts
+                accountAddresses: [accountAddress],
+                tokenIds: [],
+                pagination: Pagination(
+                    cursor: nil,
+                    limit: 100, // Fetch up to 100 tokens
+                    direction: .forward,
+                    orderBy: []
+                )
+            )
+            
+            let balancesPage = try client.tokenBalances(query: balanceQuery)
+            print("📦 Found \(balancesPage.items.count) tokens owned by account")
+            
+            // Filter tokens with non-zero balance
+            var tokenIdsToCheck: [U256] = []
+            var tokenBalanceMap: [String: TokenBalance] = [:]
+            
+            for tokenBalance in balancesPage.items {
+                let balanceString = tokenBalance.balance.hasPrefix("0x") ?
+                    String(tokenBalance.balance.dropFirst(2)) : tokenBalance.balance
+                if let balance = BInt(balanceString, radix: 16) ?? BInt(balanceString, radix: 10),
+                   balance > 0 {
+                    tokenIdsToCheck.append(tokenBalance.tokenId)
+                    tokenBalanceMap[tokenBalance.tokenId] = tokenBalance
+                }
+            }
+            
+            print("📊 Checking \(tokenIdsToCheck.count) tokens with non-zero balance")
+            
+            // Step 2: Query tokens with attribute filter for "Minted By" = game contract address
+            guard !tokenIdsToCheck.isEmpty else {
+                await MainActor.run {
+                    self.games = []
+                    self.isLoadingGames = false
+                    print("✅ No tokens found")
+                }
+                return
+            }
+            
+            // Create attribute filter for "Minted By" trait
+            let mintedByFilter = AttributeFilter(
+                traitName: "Minted By",
+                traitValue: gameContractAddress
+            )
+            
+            let tokenQuery = TokenQuery(
+                contractAddresses: [], // Check all contracts
+                tokenIds: tokenIdsToCheck, // Only check tokens we own
+                attributeFilters: [mintedByFilter], // Filter by "Minted By" attribute
+                pagination: Pagination(
+                    cursor: nil,
+                    limit: 100,
+                    direction: .forward,
+                    orderBy: []
+                )
+            )
+            
+            let tokensPage = try client.tokens(query: tokenQuery)
+            
+            // Step 3: Convert matching tokens to Game objects
+            var fetchedGames: [Game] = []
+            for token in tokensPage.items {
+                if let tokenBalance = tokenBalanceMap[token.tokenId] {
+                    let game = Game(
+                        id: token.tokenId,
+                        tokenId: token.tokenId,
+                        contractAddress: token.contractAddress,
+                        balance: tokenBalance.balance
+                    )
+                    fetchedGames.append(game)
+                    print("✅ Found game token: \(token.tokenId)")
+                }
+            }
+            
+            await MainActor.run {
+                self.games = fetchedGames
+                self.isLoadingGames = false
+                print("✅ Games loaded: \(self.games.count) games")
+            }
+        } catch {
+            await MainActor.run {
+                self.errorMessage = "Failed to fetch games: \(error.localizedDescription)"
+                self.isLoadingGames = false
+                self.games = []
+                print("❌ Games fetch error: \(error)")
+            }
         }
     }
     
