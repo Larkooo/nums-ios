@@ -447,6 +447,7 @@ struct MainView: View {
         .sheet(isPresented: $showGameSelection) {
             GameSelectionSheet()
                 .environmentObject(dojoManager)
+                .environmentObject(sessionManager)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
@@ -456,15 +457,14 @@ struct MainView: View {
                 sessionManager.loadPersistedSession()
             }
             
-            // Fetch token balance, games and subscribe if session is active AND Torii is connected
+            // Fetch token balance and subscribe if session is active AND Torii is connected
             if isSessionValid, let address = sessionManager.sessionAddress, dojoManager.isConnected {
                 Task {
                     // Fetch initial balance
                     await dojoManager.fetchTokenBalance(for: address)
                     // Subscribe to balance updates
                     await dojoManager.subscribeToTokenBalance(for: address)
-                    // Fetch games
-                    await dojoManager.fetchGames(for: address)
+                    // Note: fetchAllGames() is called during Torii initialization for leaderboard
                 }
             }
             
@@ -474,33 +474,29 @@ struct MainView: View {
             }
         }
         .onChange(of: dojoManager.isConnected) { isConnected in
-            // When Torii client connects, fetch balance and games if we have a valid session
+            // When Torii client connects, fetch balance if we have a valid session
             if isConnected, isSessionValid, let address = sessionManager.sessionAddress {
                 Task {
-                    print("🔄 Torii connected - fetching balance and games for session")
+                    print("🔄 Torii connected - fetching balance for session")
                     await dojoManager.fetchTokenBalance(for: address)
                     await dojoManager.subscribeToTokenBalance(for: address)
-                    await dojoManager.fetchGames(for: address)
+                    // Note: fetchAllGames() is already called during Torii initialization
                 }
             }
         }
         .onChange(of: sessionManager.sessionAddress) { newAddress in
-            // Fetch balance, games and subscribe when session address changes (only if Torii is connected)
+            // Fetch balance and subscribe when session address changes (only if Torii is connected)
             if isSessionValid, let address = newAddress, dojoManager.isConnected {
                 Task {
                     // Fetch initial balance
                     await dojoManager.fetchTokenBalance(for: address)
                     // Subscribe to balance updates
                     await dojoManager.subscribeToTokenBalance(for: address)
-                    // Fetch games
-                    await dojoManager.fetchGames(for: address)
+                    // Note: Global games and leaderboard remain populated from fetchAllGames()
                 }
             } else {
-                // Reset balance, games, leaderboard, and game models when disconnected
+                // Reset balance when disconnected (keep global games/leaderboard)
                 dojoManager.tokenBalance = 0
-                dojoManager.games = []
-                dojoManager.playerLeaderboard = []
-                dojoManager.gameModels = [:]
             }
         }
     }

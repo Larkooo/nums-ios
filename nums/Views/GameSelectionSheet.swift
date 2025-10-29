@@ -2,8 +2,17 @@ import SwiftUI
 
 struct GameSelectionSheet: View {
     @EnvironmentObject var dojoManager: DojoManager
+    @EnvironmentObject var sessionManager: SessionManager
     @Environment(\.dismiss) var dismiss
     @State private var currentTime = Date()
+    
+    // Filter games to show only the current user's games
+    private var userGames: [Game] {
+        guard let userAddress = sessionManager.sessionAddress?.lowercased() else {
+            return []
+        }
+        return dojoManager.games.filter { $0.accountAddress.lowercased() == userAddress }
+    }
     
     private var tournamentName: String {
         guard let tournament = dojoManager.selectedTournament else {
@@ -125,7 +134,7 @@ struct GameSelectionSheet: View {
                             .foregroundColor(.white.opacity(0.7))
                     }
                     .frame(maxHeight: .infinity)
-                } else if dojoManager.games.isEmpty {
+                } else if userGames.isEmpty {
                     // No games state
                     VStack(spacing: 16) {
                         Image(systemName: "gamecontroller")
@@ -143,7 +152,7 @@ struct GameSelectionSheet: View {
                     // Games list
                     ScrollView {
                         VStack(spacing: 12) {
-                            ForEach(dojoManager.games) { game in
+                            ForEach(userGames) { game in
                                 GameRow(game: game, dojoManager: dojoManager)
                             }
                         }
@@ -255,5 +264,6 @@ struct GameRow: View {
 #Preview {
     GameSelectionSheet()
         .environmentObject(DojoManager())
+        .environmentObject(SessionManager())
 }
 
