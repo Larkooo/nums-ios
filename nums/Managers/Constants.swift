@@ -51,7 +51,7 @@ struct Constants {
         // NUMS Token Contract
         SessionPolicyConfig(
             contractAddress: numsAddress,
-            methods: ["approve"]
+            methods: ["approve", "mint"]
         ),
         // Game Contract
         SessionPolicyConfig(

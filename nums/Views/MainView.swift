@@ -152,24 +152,34 @@ struct MainView: View {
                             .cornerRadius(12)
                     }
                     
-                    // Balance
-                    HStack(spacing: 10) {
-                        if dojoManager.isLoadingBalance {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        } else {
-                            Text(formatBalance(dojoManager.tokenBalance))
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.6)
+                    // Balance (Tap to Mint)
+                    Button(action: {
+                        guard isSessionValid, let address = sessionManager.sessionAddress else { return }
+                        Task {
+                            // Mint 1000 NUMS tokens (1000 * 10^18 in hex)
+                            let amount = "0x3635c9adc5dea00000" // 1000 tokens
+                            await sessionManager.executeMint(to: address, amount: amount)
                         }
+                    }) {
+                        HStack(spacing: 10) {
+                            if dojoManager.isLoadingBalance {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            } else {
+                                Text(formatBalance(dojoManager.tokenBalance))
+                                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                                    .foregroundColor(.white)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.6)
+                            }
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .frame(height: 50)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(12)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .frame(height: 50)
-                    .background(Color.white.opacity(0.1))
-                    .cornerRadius(12)
+                    .disabled(!isSessionValid || sessionManager.isLoading)
                     
                     Spacer()
                     

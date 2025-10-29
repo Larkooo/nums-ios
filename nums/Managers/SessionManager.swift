@@ -509,6 +509,14 @@ class SessionManager: ObservableObject {
         )
     }
     
+    func executeMint(to recipient: String, amount: String) async {
+        await executeTransaction(
+            contractAddress: Constants.numsAddress,
+            entrypoint: "mint",
+            calldata: [recipient, amount, "0x0"]
+        )
+    }
+    
     // MARK: - Utility
     
     func handleDeepLink(url: URL) {
