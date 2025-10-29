@@ -16,6 +16,7 @@ struct MainView: View {
     @State private var currentPage = 1
     @State private var totalPages = 64
     @State private var showSessionInfo = false
+    @State private var showGameSelection = false
     @State private var isSoundEnabled = true
     
     // Check if session is valid (not expired and not revoked)
@@ -380,9 +381,18 @@ struct MainView: View {
                 
                 // Play Button
                 Button(action: {
-                    // Start game action
+                    if isSessionValid {
+                        showGameSelection = true
+                    } else {
+                        // Prompt user to connect
+                        if sessionManager.privateKey.isEmpty {
+                            sessionManager.privateKey = generateRandomPrivateKey()
+                            sessionManager.updatePublicKey()
+                        }
+                        sessionManager.openSessionInWebView()
+                    }
                 }) {
-                    Text("PLAY!")
+                    Text(isSessionValid ? "PLAY!" : "CONNECT TO PLAY")
                         .font(.system(size: 28, weight: .black, design: .rounded))
                         .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4))
                         .frame(maxWidth: .infinity)
@@ -418,6 +428,12 @@ struct MainView: View {
         }
         .sheet(isPresented: $dojoManager.showTournamentSelector) {
             TournamentSelectorSheet(dojoManager: dojoManager)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showGameSelection) {
+            GameSelectionSheet()
+                .environmentObject(dojoManager)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
@@ -462,10 +478,11 @@ struct MainView: View {
                     await dojoManager.fetchGames(for: address)
                 }
             } else {
-                // Reset balance, games, and leaderboard when disconnected
+                // Reset balance, games, leaderboard, and game models when disconnected
                 dojoManager.tokenBalance = 0
                 dojoManager.games = []
                 dojoManager.playerLeaderboard = []
+                dojoManager.gameModels = [:]
             }
         }
     }

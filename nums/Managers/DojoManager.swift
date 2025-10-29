@@ -37,6 +37,15 @@ struct PlayerLeaderboard: Identifiable {
     let games: [Game]
 }
 
+// Game Model (NUMS-Game entity)
+struct GameModel: Identifiable {
+    let id: String // token_id
+    let tokenId: String
+    let score: Int?
+    let state: String?
+    // Add more fields as needed from NUMS-Game model
+}
+
 @MainActor
 class DojoManager: ObservableObject {
     // Dojo State
@@ -67,6 +76,10 @@ class DojoManager: ObservableObject {
     // Player Leaderboard (aggregated by player)
     @Published var playerLeaderboard: [PlayerLeaderboard] = []
     @Published var isLoadingPlayerLeaderboard = false
+    
+    // Game Models (NUMS-Game entities mapped by token ID)
+    @Published var gameModels: [String: GameModel] = [:]
+    @Published var isLoadingGameModels = false
     
     private let tokenContractAddress = "0xe69b167a18be231ef14ca474e29cf6356333038162077b551a17d25d166af" // Nums
     private let gameContractAddress = "0x277902ea7ce3bbdc25304f3cf1caaed7b6f22d722a8b16827ce11fd5fcb8ac6" // Game contract
@@ -451,12 +464,75 @@ class DojoManager: ObservableObject {
             
             // Step 4: Aggregate games by player and fetch usernames
             await aggregatePlayerLeaderboard(from: fetchedGames)
+            
+            // Step 5: Fetch NUMS-Game models for each game token
+            await fetchGameModels(for: fetchedGames)
         } catch {
             await MainActor.run {
                 self.errorMessage = "Failed to fetch games: \(error.localizedDescription)"
                 self.isLoadingGames = false
                 self.games = []
                 print("❌ Games fetch error: \(error)")
+            }
+        }
+    }
+    
+    func fetchGameModels(for games: [Game]) async {
+        guard let client = toriiClient else {
+            print("⚠️ Torii client not initialized")
+            return
+        }
+        
+        guard !games.isEmpty else {
+            print("⚠️ No games to fetch models for")
+            return
+        }
+        
+        await MainActor.run {
+            self.isLoadingGameModels = true
+        }
+        
+        do {
+            print("🎮 Fetching NUMS-Game models for \(games.count) games...")
+            
+            // Query NUMS-Game entities for all token IDs
+            let query = Query(
+                worldAddresses: [],
+                pagination: Pagination(
+                    cursor: nil,
+                    limit: 100,
+                    direction: .forward,
+                    orderBy: []
+                ),
+                clause: nil,
+                noHashedKeys: false,
+                models: ["NUMS-Game"],
+                historical: false
+            )
+            
+            let entitiesPage = try client.entities(query: query)
+            print("📦 Found \(entitiesPage.items.count) NUMS-Game entities")
+            
+            // Parse game models and map by token ID
+            var modelsMap: [String: GameModel] = [:]
+            for entity in entitiesPage.items {
+                if let gameModel = parseGameModel(from: entity) {
+                    modelsMap[gameModel.tokenId] = gameModel
+                    print("✅ Found game model for token: \(gameModel.tokenId)")
+                }
+            }
+            
+            await MainActor.run {
+                self.gameModels = modelsMap
+                self.isLoadingGameModels = false
+                print("✅ Game models loaded: \(modelsMap.count) models")
+            }
+        } catch {
+            await MainActor.run {
+                self.errorMessage = "Failed to fetch game models: \(error.localizedDescription)"
+                self.isLoadingGameModels = false
+                self.gameModels = [:]
+                print("❌ Game models fetch error: \(error)")
             }
         }
     }
@@ -582,6 +658,27 @@ class DojoManager: ObservableObject {
             capacity: capacity,
             requirement: requirement,
             games: games
+        )
+    }
+    
+    private func parseGameModel(from entity: Entity) -> GameModel? {
+        // Parse NUMS-Game entity
+        let models = entity.models
+        
+        // Extract token_id - this is the key field to match with Game.tokenId
+        guard let tokenIdString = extractString(from: models, key: "token_id") else {
+            print("⚠️ Game entity missing token_id")
+            return nil
+        }
+        
+        let score = extractInt(from: models, key: "score")
+        let state = extractString(from: models, key: "state")
+        
+        return GameModel(
+            id: tokenIdString,
+            tokenId: tokenIdString,
+            score: score,
+            state: state
         )
     }
     

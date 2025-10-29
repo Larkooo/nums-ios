@@ -101,7 +101,7 @@ struct SessionInfoSheet: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
             }
-            .padding(.top, 40)
+            .padding(.top, 60)
         }
     }
 }
