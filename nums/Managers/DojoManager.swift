@@ -262,7 +262,7 @@ class DojoManager: ObservableObject {
                         String(tokenBalance.balance.dropFirst(2)) : tokenBalance.balance
                     if let balanceWei = BInt(balanceString, radix: 16) ?? BInt(balanceString, radix: 10) {
                         // Convert from WEI to tokens (divide by 10^18)
-                        let divisor = BInt(10).power(18)
+                        let divisor = BInt(10) ** 18
                         self.tokenBalance = balanceWei / divisor
                         print("✅ Token balance (WEI): \(balanceWei)")
                         print("✅ Token balance (tokens): \(self.tokenBalance)")
@@ -366,12 +366,15 @@ class DojoManager: ObservableObject {
             var tokenBalanceMap: [String: TokenBalance] = [:]
             
             for tokenBalance in balancesPage.items {
+                // Unwrap optional tokenId
+                guard let tokenId = tokenBalance.tokenId else { continue }
+                
                 let balanceString = tokenBalance.balance.hasPrefix("0x") ?
                     String(tokenBalance.balance.dropFirst(2)) : tokenBalance.balance
                 if let balance = BInt(balanceString, radix: 16) ?? BInt(balanceString, radix: 10),
                    balance > 0 {
-                    tokenIdsToCheck.append(tokenBalance.tokenId)
-                    tokenBalanceMap[tokenBalance.tokenId] = tokenBalance
+                    tokenIdsToCheck.append(tokenId)
+                    tokenBalanceMap[tokenId] = tokenBalance
                 }
             }
             
@@ -410,15 +413,18 @@ class DojoManager: ObservableObject {
             // Step 3: Convert matching tokens to Game objects
             var fetchedGames: [Game] = []
             for token in tokensPage.items {
-                if let tokenBalance = tokenBalanceMap[token.tokenId] {
+                // Unwrap optional tokenId
+                guard let tokenId = token.tokenId else { continue }
+                
+                if let tokenBalance = tokenBalanceMap[tokenId] {
                     let game = Game(
-                        id: token.tokenId,
-                        tokenId: token.tokenId,
+                        id: tokenId,
+                        tokenId: tokenId,
                         contractAddress: token.contractAddress,
                         balance: tokenBalance.balance
                     )
                     fetchedGames.append(game)
-                    print("✅ Found game token: \(token.tokenId)")
+                    print("✅ Found game token: \(tokenId)")
                 }
             }
             
