@@ -48,38 +48,3 @@ nums/
 1. Clone the repository
 2. Open `nums.xcodeproj` in Xcode
 3. Build and run on simulator or device
-
-## Configuration
-
-The app connects to:
-- **RPC**: `https://api.cartridge.gg/x/starknet/sepolia`
-- **Torii**: `https://api.cartridge.gg/x/nums-bal/torii`
-- **Controller**: `https://x.cartridge.gg`
-
-## Game Flow
-
-1. **Connect**: Authenticate using Cartridge Controller
-2. **Select Tournament**: Browse and join active tournaments
-3. **Play**: Compete and climb the leaderboard
-4. **Track**: Monitor your NUMS token balance and session
-
-## Models
-
-### Tournament
-- ID, Powers, Entry Count
-- Start/End times
-- Active status
-
-### Leaderboard
-- Player rankings per tournament
-- Capacity, Requirement, Games
-- Real-time updates
-
-## License
-
-[Add your license here]
-
-## Contact
-
-[Add your contact information here]
-
