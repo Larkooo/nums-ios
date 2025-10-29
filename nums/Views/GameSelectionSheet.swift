@@ -8,10 +8,38 @@ struct GameSelectionSheet: View {
     
     // Filter games to show only the current user's games
     private var userGames: [Game] {
-        guard let userAddress = sessionManager.sessionAddress?.lowercased() else {
+        guard let rawAddress = sessionManager.sessionAddress else {
+            print("⚠️ No session address available")
             return []
         }
-        return dojoManager.games.filter { $0.accountAddress.lowercased() == userAddress }
+        
+        // Normalize user address (ensure it has 0x prefix and is lowercased)
+        let userAddress = rawAddress.lowercased().hasPrefix("0x") ? 
+            rawAddress.lowercased() : "0x\(rawAddress.lowercased())"
+        
+        // Filter games, normalizing each game's account address the same way
+        let filtered = dojoManager.games.filter { game in
+            let gameAddress = game.accountAddress.lowercased().hasPrefix("0x") ?
+                game.accountAddress.lowercased() : "0x\(game.accountAddress.lowercased())"
+            return gameAddress == userAddress
+        }
+        
+        print("🎮 User address (normalized): \(userAddress)")
+        print("🎮 Total games in system: \(dojoManager.games.count)")
+        print("🎮 User's games found: \(filtered.count)")
+        
+        if dojoManager.games.count > 0 && filtered.isEmpty {
+            print("⚠️ Games exist but none match user address")
+            print("📋 Sample game addresses (first 5):")
+            for (index, game) in dojoManager.games.prefix(5).enumerated() {
+                let normalizedGameAddr = game.accountAddress.lowercased().hasPrefix("0x") ?
+                    game.accountAddress.lowercased() : "0x\(game.accountAddress.lowercased())"
+                let matches = normalizedGameAddr == userAddress ? "✅ MATCH" : "❌"
+                print("  \(index + 1). \(normalizedGameAddr) \(matches)")
+            }
+        }
+        
+        return filtered
     }
     
     private var tournamentName: String {
@@ -166,6 +194,13 @@ struct GameSelectionSheet: View {
             // Start timer to update countdown every second
             Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
                 currentTime = Date()
+            }
+            
+            // Debug: Check what games are loaded
+            if let userAddress = sessionManager.sessionAddress {
+                print("🎮 GameSelectionSheet opened for user: \(userAddress)")
+                print("🎮 Total games loaded: \(dojoManager.games.count)")
+                print("🎮 User games filtered: \(userGames.count)")
             }
         }
     }

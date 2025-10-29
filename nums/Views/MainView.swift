@@ -353,47 +353,47 @@ struct MainView: View {
                 .frame(maxHeight: .infinity)
                 .padding(.horizontal, 16)
                 
-                // Page Navigation
-                HStack(spacing: 12) {
-                    Button(action: {}) {
-                        Image(systemName: "arrow.left")
-                            .foregroundColor(.white.opacity(0.6))
-                            .frame(width: 44, height: 44)
-                    }
-                    
-                    Button(action: {}) {
-                        Text("1")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(Color.white.opacity(0.2))
-                            .cornerRadius(12)
-                    }
-                    
-                    Button(action: {}) {
-                        Text("2")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(.white.opacity(0.6))
-                            .frame(width: 44, height: 44)
-                    }
-                    
-                    Text("...")
-                        .foregroundColor(.white.opacity(0.6))
-                    
-                    Button(action: {}) {
-                        Text("\(totalPages)")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(.white.opacity(0.6))
-                            .frame(width: 44, height: 44)
-                    }
-                    
-                    Button(action: {}) {
-                        Image(systemName: "arrow.right")
-                            .foregroundColor(.white.opacity(0.6))
-                            .frame(width: 44, height: 44)
-                    }
-                }
-                .padding(.vertical, 12)
+                // Page Navigation (TODO: Implement pagination or infinite scrolling)
+                // HStack(spacing: 12) {
+                //     Button(action: {}) {
+                //         Image(systemName: "arrow.left")
+                //             .foregroundColor(.white.opacity(0.6))
+                //             .frame(width: 44, height: 44)
+                //     }
+                //     
+                //     Button(action: {}) {
+                //         Text("1")
+                //             .font(.system(size: 18, weight: .bold))
+                //             .foregroundColor(.white)
+                //             .frame(width: 44, height: 44)
+                //             .background(Color.white.opacity(0.2))
+                //             .cornerRadius(12)
+                //     }
+                //     
+                //     Button(action: {}) {
+                //         Text("2")
+                //             .font(.system(size: 18, weight: .bold))
+                //             .foregroundColor(.white.opacity(0.6))
+                //             .frame(width: 44, height: 44)
+                //     }
+                //     
+                //     Text("...")
+                //         .foregroundColor(.white.opacity(0.6))
+                //     
+                //     Button(action: {}) {
+                //         Text("\(totalPages)")
+                //             .font(.system(size: 18, weight: .bold))
+                //             .foregroundColor(.white.opacity(0.6))
+                //             .frame(width: 44, height: 44)
+                //     }
+                //     
+                //     Button(action: {}) {
+                //         Image(systemName: "arrow.right")
+                //             .foregroundColor(.white.opacity(0.6))
+                //             .frame(width: 44, height: 44)
+                //     }
+                // }
+                // .padding(.vertical, 12)
                 
                 // Play Button
                 Button(action: {
