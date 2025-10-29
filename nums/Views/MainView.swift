@@ -16,6 +16,7 @@ struct MainView: View {
     @State private var currentPage = 1
     @State private var totalPages = 64
     @State private var showSessionInfo = false
+    @State private var isSoundEnabled = true
     
     // Check if session is valid (not expired and not revoked)
     private var isSessionValid: Bool {
@@ -95,9 +96,11 @@ struct MainView: View {
             VStack(spacing: 0) {
                 // Top Bar
                 HStack(spacing: 16) {
-                    // Hand icon
-                    Button(action: {}) {
-                        Image(systemName: "hand.raised.fill")
+                    // Sound toggle button
+                    Button(action: {
+                        isSoundEnabled.toggle()
+                    }) {
+                        Image(systemName: isSoundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
                             .font(.title2)
                             .foregroundColor(.white)
                             .frame(width: 50, height: 50)
