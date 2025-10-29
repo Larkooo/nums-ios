@@ -25,6 +25,16 @@ struct Game: Identifiable {
     let tokenId: String
     let contractAddress: String
     let balance: String
+    let accountAddress: String // Player who owns this game
+}
+
+// Player Leaderboard Model (aggregated games by player)
+struct PlayerLeaderboard: Identifiable {
+    let id: String // address
+    let address: String
+    let username: String?
+    let gameCount: Int
+    let games: [Game]
 }
 
 @MainActor
@@ -53,6 +63,10 @@ class DojoManager: ObservableObject {
     // Games
     @Published var games: [Game] = []
     @Published var isLoadingGames = false
+    
+    // Player Leaderboard (aggregated by player)
+    @Published var playerLeaderboard: [PlayerLeaderboard] = []
+    @Published var isLoadingPlayerLeaderboard = false
     
     private let tokenContractAddress = "0xe69b167a18be231ef14ca474e29cf6356333038162077b551a17d25d166af" // Nums
     private let gameContractAddress = "0x277902ea7ce3bbdc25304f3cf1caaed7b6f22d722a8b16827ce11fd5fcb8ac6" // Game contract
@@ -421,10 +435,11 @@ class DojoManager: ObservableObject {
                         id: tokenId,
                         tokenId: tokenId,
                         contractAddress: token.contractAddress,
-                        balance: tokenBalance.balance
+                        balance: tokenBalance.balance,
+                        accountAddress: tokenBalance.accountAddress
                     )
                     fetchedGames.append(game)
-                    print("✅ Found game token: \(tokenId)")
+                    print("✅ Found game token: \(tokenId) owned by \(tokenBalance.accountAddress)")
                 }
             }
             
@@ -433,12 +448,99 @@ class DojoManager: ObservableObject {
                 self.isLoadingGames = false
                 print("✅ Games loaded: \(self.games.count) games")
             }
+            
+            // Step 4: Aggregate games by player and fetch usernames
+            await aggregatePlayerLeaderboard(from: fetchedGames)
         } catch {
             await MainActor.run {
                 self.errorMessage = "Failed to fetch games: \(error.localizedDescription)"
                 self.isLoadingGames = false
                 self.games = []
                 print("❌ Games fetch error: \(error)")
+            }
+        }
+    }
+    
+    private func aggregatePlayerLeaderboard(from games: [Game]) async {
+        guard let client = toriiClient else {
+            print("⚠️ Torii client not initialized")
+            return
+        }
+        
+        await MainActor.run {
+            self.isLoadingPlayerLeaderboard = true
+        }
+        
+        do {
+            print("👥 Aggregating player leaderboard from \(games.count) games...")
+            
+            // Step 1: Group games by player address
+            var gamesByPlayer: [String: [Game]] = [:]
+            for game in games {
+                if gamesByPlayer[game.accountAddress] == nil {
+                    gamesByPlayer[game.accountAddress] = []
+                }
+                gamesByPlayer[game.accountAddress]?.append(game)
+            }
+            
+            print("📊 Found \(gamesByPlayer.count) unique players")
+            
+            // Step 2: Fetch controller usernames for all player addresses
+            let playerAddresses = Array(gamesByPlayer.keys)
+            
+            let controllerQuery = ControllerQuery(
+                pagination: Pagination(
+                    cursor: nil,
+                    limit: 100,
+                    direction: .forward,
+                    orderBy: []
+                ),
+                contractAddresses: playerAddresses,
+                usernames: []
+            )
+            
+            let controllersPage = try client.controllers(query: controllerQuery)
+            print("🎮 Fetched \(controllersPage.items.count) controllers")
+            
+            // Step 3: Create username lookup map
+            var usernameMap: [String: String] = [:]
+            for controller in controllersPage.items {
+                usernameMap[controller.address] = controller.username
+            }
+            
+            // Step 4: Build player leaderboard
+            var leaderboard: [PlayerLeaderboard] = []
+            for (address, playerGames) in gamesByPlayer {
+                let player = PlayerLeaderboard(
+                    id: address,
+                    address: address,
+                    username: usernameMap[address],
+                    gameCount: playerGames.count,
+                    games: playerGames
+                )
+                leaderboard.append(player)
+                
+                if let username = player.username {
+                    print("✅ Player: \(username) (\(address)) - \(player.gameCount) games")
+                } else {
+                    print("✅ Player: \(address) (no username) - \(player.gameCount) games")
+                }
+            }
+            
+            // Sort by game count (descending)
+            leaderboard.sort { $0.gameCount > $1.gameCount }
+            
+            await MainActor.run {
+                self.playerLeaderboard = leaderboard
+                self.isLoadingPlayerLeaderboard = false
+                print("✅ Player leaderboard loaded: \(leaderboard.count) players")
+            }
+        } catch {
+            await MainActor.run {
+                self.errorMessage = "Failed to aggregate player leaderboard: \(error.localizedDescription)"
+                self.isLoadingPlayerLeaderboard = false
+                self.playerLeaderboard = []
+                print("❌ Player leaderboard aggregation error: \(error)")
             }
         }
     }

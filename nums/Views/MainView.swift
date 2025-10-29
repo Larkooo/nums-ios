@@ -73,9 +73,24 @@ struct MainView: View {
         return "00:00:00"
     }
     
-    // Leaderboard data from DojoManager
+    // Leaderboard data from DojoManager (shows player leaderboard if available)
     private var leaderboard: [LeaderboardEntry] {
         let currentAddress = sessionManager.sessionAddress?.lowercased() ?? ""
+        
+        // Show player leaderboard (games aggregated by player) if available
+        if !dojoManager.playerLeaderboard.isEmpty {
+            return dojoManager.playerLeaderboard.enumerated().map { (index, player) in
+                LeaderboardEntry(
+                    rank: index + 1,
+                    player: player.username ?? String(player.address.prefix(10)), // Show username or address
+                    score: player.gameCount, // Game count as score
+                    prize: "-", // No prize for game leaderboard
+                    isCurrentUser: player.address.lowercased() == currentAddress
+                )
+            }
+        }
+        
+        // Fall back to tournament leaderboard
         return dojoManager.leaderboard.enumerated().map { (index, player) in
             LeaderboardEntry(
                 rank: index + 1,
@@ -447,9 +462,10 @@ struct MainView: View {
                     await dojoManager.fetchGames(for: address)
                 }
             } else {
-                // Reset balance and games when disconnected
+                // Reset balance, games, and leaderboard when disconnected
                 dojoManager.tokenBalance = 0
                 dojoManager.games = []
+                dojoManager.playerLeaderboard = []
             }
         }
     }
