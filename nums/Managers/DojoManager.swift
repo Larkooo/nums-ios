@@ -515,6 +515,7 @@ class DojoManager: ObservableObject {
         
         do {
             print("🎮 Fetching all games for leaderboard...")
+            print("🔍 Using 'Minted By' filter with address: \(gameTokenMintAddress)")
             
             // Step 1: Query all tokens with the "Minted By" attribute filter
             let mintedByFilter = AttributeFilter(
@@ -534,8 +535,37 @@ class DojoManager: ObservableObject {
                 )
             )
             
+            print("🔍 Querying tokens...")
             let tokensPage = try client.tokens(query: tokenQuery)
             print("📦 Found \(tokensPage.items.count) game tokens")
+            
+            // Debug: If no tokens found, try without filter
+            if tokensPage.items.isEmpty {
+                print("⚠️ No tokens found with 'Minted By' filter")
+                print("🔍 Trying to fetch ALL tokens to debug...")
+                let debugQuery = TokenQuery(
+                    contractAddresses: [],
+                    tokenIds: [],
+                    attributeFilters: [],
+                    pagination: Pagination(
+                        cursor: nil,
+                        limit: 10,
+                        direction: .forward,
+                        orderBy: []
+                    )
+                )
+                let debugTokensPage = try client.tokens(query: debugQuery)
+                print("📦 Total tokens in system (first 10): \(debugTokensPage.items.count)")
+                
+                if !debugTokensPage.items.isEmpty {
+                    print("📋 Sample token attributes:")
+                    for (index, token) in debugTokensPage.items.prefix(3).enumerated() {
+                        print("  Token \(index + 1): \(token.tokenId ?? "N/A")")
+                        print("    Contract: \(token.contractAddress)")
+                        print("    Metadata: \(token.metadata)")
+                    }
+                }
+            }
             
             // Step 2: Get token IDs and fetch their balances
             var tokenIds: [U256] = []
