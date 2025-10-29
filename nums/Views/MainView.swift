@@ -96,18 +96,6 @@ struct MainView: View {
             VStack(spacing: 0) {
                 // Top Bar
                 HStack(spacing: 16) {
-                    // Sound toggle button
-                    Button(action: {
-                        isSoundEnabled.toggle()
-                    }) {
-                        Image(systemName: isSoundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                            .frame(width: 50, height: 50)
-                            .background(Color.white.opacity(0.1))
-                            .cornerRadius(12)
-                    }
-                    
                     // NUMS icon button
                     Button(action: {}) {
                         Image("nums-icon")
@@ -116,7 +104,19 @@ struct MainView: View {
                             .aspectRatio(contentMode: .fit)
                             .frame(width: 24, height: 34)
                             .foregroundColor(.white)
-                            .frame(width: 50, height: 50)
+                            .frame(width: 58, height: 58)
+                            .background(Color.white.opacity(0.1))
+                            .cornerRadius(12)
+                    }
+                    
+                    // Sound toggle button
+                    Button(action: {
+                        isSoundEnabled.toggle()
+                    }) {
+                        Image(systemName: isSoundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                            .font(.title2)
+                            .foregroundColor(.white)
+                            .frame(width: 58, height: 58)
                             .background(Color.white.opacity(0.1))
                             .cornerRadius(12)
                     }
@@ -161,7 +161,7 @@ struct MainView: View {
                                     .lineLimit(1)
                             }
                             .padding(.horizontal, 16)
-                            .frame(height: 50)
+                            .frame(height: 58)
                             .background(Color.white.opacity(0.1))
                             .cornerRadius(12)
                         }
@@ -188,7 +188,7 @@ struct MainView: View {
                             }
                             .foregroundColor(.white)
                             .padding(.horizontal, 16)
-                            .frame(height: 50)
+                            .frame(height: 58)
                             .background(Color.green.opacity(0.8))
                             .cornerRadius(12)
                         }
