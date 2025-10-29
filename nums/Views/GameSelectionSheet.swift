@@ -50,16 +50,112 @@ struct GameSelectionSheet: View {
                     
                     Spacer()
                     
-                    Button(action: {
-                        dismiss()
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(.white.opacity(0.6))
-                    }
+                    // Button(action: {
+                    //     dismiss()
+                    // }) {
+                    //     Image(systemName: "xmark.circle.fill")
+                    //         .font(.system(size: 28))
+                    //         .foregroundColor(.white.opacity(0.6))
+                    // }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
+                .padding(.bottom, 16)
+                
+                // Entry Options
+                HStack(spacing: 12) {
+                    // Share on X - Free
+                    VStack(spacing: 8) {
+                        Text("Share on X")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(height: 20)
+                        
+                        Button(action: {
+                            // TODO: Share on X action
+                        }) {
+                            Text("Free!")
+                                .font(.system(size: 24, weight: .black))
+                                .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4).opacity(0.5))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 40)
+                                .background(Color.white.opacity(0.3))
+                                .cornerRadius(8)
+                        }
+                        .disabled(true)
+                    }
+                    .padding(12)
+                    .background(Color.white.opacity(0.1))
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    )
+                    
+                    // Play with Nums - 2000 NUMS
+                    VStack(spacing: 8) {
+                        Text("Play with Nums")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(height: 20)
+                        
+                        Button(action: {
+                            // TODO: Play with NUMS action
+                        }) {
+                            Text("2000 NUMS")
+                                .font(.system(size: 24, weight: .black))
+                                .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 40)
+                                .background(
+                                    LinearGradient(
+                                        colors: [Color.yellow, Color.orange],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                                .cornerRadius(8)
+                                .shadow(color: .white.opacity(0.12), radius: 0, x: 1, y: 1)
+                                .shadow(color: .black.opacity(0.12), radius: 0, x: 1, y: 1)
+                        }
+                    }
+                    .padding(12)
+                    .background(Color.white.opacity(0.1))
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    )
+                    
+                    // Play with USD - $1.13
+                    VStack(spacing: 8) {
+                        Text("Play with USD")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(height: 20)
+                        
+                        Button(action: {
+                            // TODO: Play with USD action
+                        }) {
+                            Text("$1.13")
+                                .font(.system(size: 24, weight: .black))
+                                .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4).opacity(0.5))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 40)
+                                .background(Color.white.opacity(0.3))
+                                .cornerRadius(8)
+                        }
+                        .disabled(true)
+                    }
+                    .padding(12)
+                    .background(Color.white.opacity(0.1))
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    )
+                }
+                .padding(.horizontal, 20)
                 .padding(.bottom, 16)
                 
                 if dojoManager.isLoadingGames {
@@ -99,6 +195,7 @@ struct GameSelectionSheet: View {
                     }
                 }
             }
+            .padding(.top, 20)
         }
         .onAppear {
             // Start timer to update countdown every second
@@ -178,7 +275,7 @@ struct GameRow: View {
                     } else {
                         Text("Play")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(Color(red: 0.349, green: 0.122, blue: 1.0))
+                            .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4))
                             .padding(.horizontal, 24)
                             .padding(.vertical, 12)
                             .background(
