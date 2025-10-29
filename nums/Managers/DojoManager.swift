@@ -104,7 +104,7 @@ class DojoManager: ObservableObject {
     
     // Contract addresses (from Constants)
     private let tokenContractAddress = Constants.numsAddress
-    private let gameContractAddress = Constants.gameAddress
+    private let gameTokenMintAddress = Constants.worldAddress // World address is used for "Minted By" filter
     
     // Subscription tracking
     private var tournamentSubscriptionId: UInt64?
@@ -446,7 +446,7 @@ class DojoManager: ObservableObject {
             // Create attribute filter for "Minted By" trait
             let mintedByFilter = AttributeFilter(
                 traitName: "Minted By",
-                traitValue: gameContractAddress
+                traitValue: gameTokenMintAddress
             )
             
             let tokenQuery = TokenQuery(
@@ -519,7 +519,7 @@ class DojoManager: ObservableObject {
             // Step 1: Query all tokens with the "Minted By" attribute filter
             let mintedByFilter = AttributeFilter(
                 traitName: "Minted By",
-                traitValue: gameContractAddress
+                traitValue: gameTokenMintAddress
             )
             
             let tokenQuery = TokenQuery(

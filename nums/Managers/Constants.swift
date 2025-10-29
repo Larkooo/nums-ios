@@ -20,7 +20,7 @@ struct Constants {
     // NUMS Token Contract
     static let numsAddress = "0x0e69b167a18be231ef14ca474e29cf6356333038162077b551a17d25d166af"
     
-    // Game Contract (for both session policies and token filtering)
+    // Game Contract (for session policies - start/set methods)
     static let gameAddress = "0x0277902ea7ce3bbdc25304f3cf1caaed7b6f22d722a8b16827ce11fd5fcb8ac6"
     
     // MARK: - Common Token Contracts (for reference)
@@ -30,8 +30,8 @@ struct Constants {
     
     // MARK: - Dojo Configuration
     
-    static let toriiUrl = "https://api.cartridge.gg/x/nums-bal/torii/"
-    static let worldAddress = "" // TODO: Add world address if needed
+    static let toriiUrl = "https://api.cartridge.gg/x/nums-bal/torii"
+    static let worldAddress = "0x04aebc039a9beb576533eca4075bacdc037b3c7160de6ed1e2e1a3005129a29e"
     static let namespace = "NUMS"
     
     // MARK: - Session Policies
