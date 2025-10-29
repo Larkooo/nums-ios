@@ -16,10 +16,10 @@ struct PolicyItem: Identifiable, Codable {
 
 @MainActor
 class SessionManager: ObservableObject {
-    // Configuration
-    let rpcUrl = "https://api.cartridge.gg/x/starknet/sepolia"
-    let cartridgeApiUrl = "https://api.cartridge.gg"
-    let keychainUrl = "https://x.cartridge.gg"
+    // Configuration (from Constants)
+    let rpcUrl = Constants.rpcUrl
+    let cartridgeApiUrl = Constants.cartridgeApiUrl
+    let keychainUrl = Constants.keychainUrl
     
     // State
     @Published var sessionAccount: SessionAccount?
@@ -65,13 +65,16 @@ class SessionManager: ObservableObject {
         return currentTime > expiresAt
     }
     
-    // Common contracts
+    // Common contracts (from Constants)
     let commonContracts = [
-        ("ETH Token", "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"),
-        ("STRK Token", "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d"),
+        ("VRF", Constants.vrfAddress),
+        ("NUMS Token", Constants.numsAddress),
+        ("Game", Constants.gameAddress),
+        ("ETH Token", Constants.ethTokenAddress),
+        ("STRK Token", Constants.strkTokenAddress),
     ]
     
-    let commonMethods = ["transfer", "approve", "transfer_from", "mint", "burn"]
+    let commonMethods = ["request_random", "approve", "start", "set", "transfer"]
     
     init() {
         loadOrGenerateKey()
@@ -108,16 +111,15 @@ class SessionManager: ObservableObject {
     // MARK: - Policy Management
     
     func setupDefaultPolicies() {
-        policies = [
-            PolicyItem(
-                contractAddress: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
-                entrypoint: "transfer"
-            ),
-            PolicyItem(
-                contractAddress: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
-                entrypoint: "approve"
-            )
-        ]
+        // Build policies from Constants
+        policies = Constants.defaultSessionPolicies.flatMap { policyConfig in
+            policyConfig.methods.map { method in
+                PolicyItem(
+                    contractAddress: policyConfig.contractAddress,
+                    entrypoint: method
+                )
+            }
+        }
     }
     
     func addPolicy(contractAddress: String, entrypoint: String) {

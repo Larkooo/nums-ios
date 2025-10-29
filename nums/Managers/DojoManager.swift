@@ -69,11 +69,11 @@ struct GameModel: Identifiable {
 
 @MainActor
 class DojoManager: ObservableObject {
-    // Dojo State
+    // Dojo State (from Constants)
     @Published var isConnected = false
-    @Published var worldAddress: String = ""
-    @Published var rpcUrl: String = "https://api.cartridge.gg/x/starknet/sepolia"
-    @Published var toriiUrl: String = "https://api.cartridge.gg/x/nums-bal/torii"
+    @Published var worldAddress: String = Constants.worldAddress
+    @Published var rpcUrl: String = Constants.rpcUrl
+    @Published var toriiUrl: String = Constants.toriiUrl
     
     // Torii Client
     private var toriiClient: ToriiClient?
@@ -102,8 +102,10 @@ class DojoManager: ObservableObject {
     @Published var gameModels: [String: GameModel] = [:]
     @Published var isLoadingGameModels = false
     
-    private let tokenContractAddress = "0xe69b167a18be231ef14ca474e29cf6356333038162077b551a17d25d166af" // Nums
-    private let gameContractAddress = "0x277902ea7ce3bbdc25304f3cf1caaed7b6f22d722a8b16827ce11fd5fcb8ac6" // Game contract
+    // Contract addresses (from Constants)
+    private let tokenContractAddress = Constants.numsAddress
+    private let gameContractAddress = Constants.gameMintingAddress // Used for "Minted By" filter
+    
     // Subscription tracking
     private var tournamentSubscriptionId: UInt64?
     private var leaderboardSubscriptionId: UInt64?
