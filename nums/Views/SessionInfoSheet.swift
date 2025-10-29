@@ -12,6 +12,11 @@ struct SessionInfoSheet: View {
     @Environment(\.dismiss) var dismiss
     @ObservedObject var sessionManager: SessionManager
     @State private var isPoliciesExpanded = false
+    @Binding var selectedDetent: PresentationDetent
+    
+    private var isFullyExpanded: Bool {
+        selectedDetent == .large
+    }
     
     private func truncateMiddle(_ text: String) -> String {
         guard text.count > 16 else { return text }
@@ -82,61 +87,63 @@ struct SessionInfoSheet: View {
                     }
                     .font(.system(size: 16))
                     
-                    Divider().background(Color.white.opacity(0.2))
-                    
-                    // Policies Section (Collapsible)
-                    VStack(alignment: .leading, spacing: 12) {
-                        // Header
-                        Button(action: {
-                            withAnimation(.spring(response: 0.3)) {
-                                isPoliciesExpanded.toggle()
-                            }
-                        }) {
-                            HStack {
-                                Image(systemName: "shield.checkered")
-                                    .foregroundColor(.white.opacity(0.7))
-                                    .frame(width: 24)
-                                Text("Policies")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.white.opacity(0.7))
-                                Spacer()
-                                Image(systemName: isPoliciesExpanded ? "chevron.up" : "chevron.down")
-                                    .foregroundColor(.white.opacity(0.5))
-                                    .font(.system(size: 14))
-                            }
-                        }
+                    // Policies Section (Collapsible) - Only show when sheet is fully expanded
+                    if isFullyExpanded {
+                        Divider().background(Color.white.opacity(0.2))
                         
-                        // Expanded Content
-                        if isPoliciesExpanded {
-                            VStack(alignment: .leading, spacing: 8) {
-                                ForEach(sessionManager.policies.filter { $0.enabled }) { policy in
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        HStack {
-                                            Circle()
-                                                .fill(Color.green)
-                                                .frame(width: 6, height: 6)
-                                            Text(policy.entrypoint)
-                                                .font(.system(size: 14, weight: .medium))
-                                                .foregroundColor(.white)
+                        VStack(alignment: .leading, spacing: 12) {
+                            // Header
+                            Button(action: {
+                                withAnimation(.spring(response: 0.3)) {
+                                    isPoliciesExpanded.toggle()
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: "shield.checkered")
+                                        .foregroundColor(.white.opacity(0.7))
+                                        .frame(width: 24)
+                                    Text("Policies")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.white.opacity(0.7))
+                                    Spacer()
+                                    Image(systemName: isPoliciesExpanded ? "chevron.up" : "chevron.down")
+                                        .foregroundColor(.white.opacity(0.5))
+                                        .font(.system(size: 14))
+                                }
+                            }
+                            
+                            // Expanded Content
+                            if isPoliciesExpanded {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ForEach(sessionManager.policies.filter { $0.enabled }) { policy in
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            HStack {
+                                                Circle()
+                                                    .fill(Color.green)
+                                                    .frame(width: 6, height: 6)
+                                                Text(policy.entrypoint)
+                                                    .font(.system(size: 14, weight: .medium))
+                                                    .foregroundColor(.white)
+                                            }
+                                            
+                                            Text(truncateMiddle(policy.contractAddress))
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white.opacity(0.6))
+                                                .padding(.leading, 14)
                                         }
-                                        
-                                        Text(truncateMiddle(policy.contractAddress))
-                                            .font(.system(size: 12, weight: .regular))
-                                            .foregroundColor(.white.opacity(0.6))
+                                        .padding(.vertical, 4)
+                                    }
+                                    
+                                    if sessionManager.policies.filter({ $0.enabled }).isEmpty {
+                                        Text("No policies configured")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.white.opacity(0.5))
                                             .padding(.leading, 14)
                                     }
-                                    .padding(.vertical, 4)
                                 }
-                                
-                                if sessionManager.policies.filter({ $0.enabled }).isEmpty {
-                                    Text("No policies configured")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.white.opacity(0.5))
-                                        .padding(.leading, 14)
-                                }
+                                .padding(.top, 4)
+                                .padding(.leading, 12)
                             }
-                            .padding(.top, 4)
-                            .padding(.leading, 12)
                         }
                     }
                 }
@@ -168,6 +175,14 @@ struct SessionInfoSheet: View {
                 .padding(.bottom, 20)
             }
             .padding(.top, 60)
+        }
+        .onChange(of: selectedDetent) { newDetent in
+            // Collapse policies when sheet is minimized
+            if newDetent == .medium && isPoliciesExpanded {
+                withAnimation(.spring(response: 0.3)) {
+                    isPoliciesExpanded = false
+                }
+            }
         }
     }
 }

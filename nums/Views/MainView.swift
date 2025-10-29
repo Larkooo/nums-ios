@@ -20,6 +20,7 @@ struct MainView: View {
     @State private var showHowToPlay = false
     @State private var isSoundEnabled = true
     @State private var currentTime = Date() // For updating countdown timer
+    @State private var sessionInfoDetent: PresentationDetent = .medium
     
     // Check if session is valid (not expired and not revoked)
     private var isSessionValid: Bool {
@@ -433,8 +434,8 @@ struct MainView: View {
             }
         }
         .sheet(isPresented: $showSessionInfo) {
-            SessionInfoSheet(sessionManager: sessionManager)
-                .presentationDetents([.medium, .large])
+            SessionInfoSheet(sessionManager: sessionManager, selectedDetent: $sessionInfoDetent)
+                .presentationDetents([.medium, .large], selection: $sessionInfoDetent)
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $sessionManager.showAccountConnectedCard) {
