@@ -145,6 +145,9 @@ class DojoManager: ObservableObject {
                 await fetchLeaderboard(for: selectedTournament!.id)
             }
             
+            // Fetch all games for player leaderboard
+            await fetchAllGames()
+            
             // Start subscriptions
             await subscribeTournaments()
             if let tournamentId = selectedTournament?.id {
@@ -494,6 +497,117 @@ class DojoManager: ObservableObject {
                 self.isLoadingGames = false
                 self.games = []
                 print("❌ Games fetch error: \(error)")
+            }
+        }
+    }
+    
+    func fetchAllGames() async {
+        guard let client = toriiClient else {
+            print("⚠️ Torii client not initialized")
+            return
+        }
+        
+        await MainActor.run {
+            self.isLoadingGames = true
+        }
+        
+        do {
+            print("🎮 Fetching all games for leaderboard...")
+            
+            // Step 1: Query all tokens with the "Minted By" attribute filter
+            let mintedByFilter = AttributeFilter(
+                traitName: "Minted By",
+                traitValue: gameContractAddress
+            )
+            
+            let tokenQuery = TokenQuery(
+                contractAddresses: [], // Check all contracts
+                tokenIds: [], // Get all token IDs
+                attributeFilters: [mintedByFilter], // Filter by "Minted By" attribute
+                pagination: Pagination(
+                    cursor: nil,
+                    limit: 1000, // Fetch up to 1000 tokens for leaderboard
+                    direction: .forward,
+                    orderBy: []
+                )
+            )
+            
+            let tokensPage = try client.tokens(query: tokenQuery)
+            print("📦 Found \(tokensPage.items.count) game tokens")
+            
+            // Step 2: Get token IDs and fetch their balances
+            var tokenIds: [U256] = []
+            for token in tokensPage.items {
+                if let tokenId = token.tokenId {
+                    tokenIds.append(tokenId)
+                }
+            }
+            
+            guard !tokenIds.isEmpty else {
+                await MainActor.run {
+                    self.games = []
+                    self.isLoadingGames = false
+                    print("✅ No game tokens found")
+                }
+                return
+            }
+            
+            // Step 3: Fetch balances for all these tokens
+            let balanceQuery = TokenBalanceQuery(
+                contractAddresses: [],
+                accountAddresses: [], // Fetch for all accounts
+                tokenIds: tokenIds,
+                pagination: Pagination(
+                    cursor: nil,
+                    limit: 1000,
+                    direction: .forward,
+                    orderBy: []
+                )
+            )
+            
+            let balancesPage = try client.tokenBalances(query: balanceQuery)
+            print("📦 Found \(balancesPage.items.count) token balances")
+            
+            // Step 4: Build games list from balances
+            var fetchedGames: [Game] = []
+            for tokenBalance in balancesPage.items {
+                guard let tokenId = tokenBalance.tokenId else { continue }
+                
+                // Check if balance is non-zero
+                let balanceString = tokenBalance.balance.hasPrefix("0x") ?
+                    String(tokenBalance.balance.dropFirst(2)) : tokenBalance.balance
+                if let balance = BInt(balanceString, radix: 16) ?? BInt(balanceString, radix: 10),
+                   balance > 0 {
+                    
+                    let game = Game(
+                        id: tokenId,
+                        tokenId: tokenId,
+                        contractAddress: tokenBalance.contractAddress,
+                        balance: tokenBalance.balance,
+                        accountAddress: tokenBalance.accountAddress
+                    )
+                    fetchedGames.append(game)
+                    print("✅ Found game token: \(tokenId) owned by \(tokenBalance.accountAddress)")
+                }
+            }
+            
+            await MainActor.run {
+                self.games = fetchedGames
+                self.isLoadingGames = false
+                print("✅ All games loaded: \(self.games.count) games")
+            }
+            
+            // Step 5: Aggregate games by player and fetch usernames
+            await aggregatePlayerLeaderboard(from: fetchedGames)
+            
+            // Step 6: Fetch NUMS-Game models for each game token
+            await fetchGameModels(for: fetchedGames)
+        } catch {
+            await MainActor.run {
+                self.errorMessage = "Failed to fetch all games: \(error.localizedDescription)"
+                self.isLoadingGames = false
+                self.games = []
+                print("❌ All games fetch error: \(error)")
             }
         }
     }
