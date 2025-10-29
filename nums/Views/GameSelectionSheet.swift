@@ -6,6 +6,22 @@ struct GameSelectionSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var currentTime = Date()
     
+    // Helper function to normalize Starknet addresses for comparison
+    private func normalizeAddress(_ address: String) -> String {
+        // Remove 0x prefix and convert to lowercase
+        var normalized = address.lowercased()
+        if normalized.hasPrefix("0x") {
+            normalized = String(normalized.dropFirst(2))
+        }
+        
+        // Remove leading zeros
+        while normalized.hasPrefix("0") && normalized.count > 1 {
+            normalized = String(normalized.dropFirst())
+        }
+        
+        return normalized
+    }
+    
     // Filter games to show only the current user's games
     private var userGames: [Game] {
         guard let rawAddress = sessionManager.sessionAddress else {
@@ -13,18 +29,17 @@ struct GameSelectionSheet: View {
             return []
         }
         
-        // Normalize user address (ensure it has 0x prefix and is lowercased)
-        let userAddress = rawAddress.lowercased().hasPrefix("0x") ? 
-            rawAddress.lowercased() : "0x\(rawAddress.lowercased())"
+        // Normalize user address (remove 0x prefix and leading zeros)
+        let normalizedUserAddress = normalizeAddress(rawAddress)
         
         // Filter games, normalizing each game's account address the same way
         let filtered = dojoManager.games.filter { game in
-            let gameAddress = game.accountAddress.lowercased().hasPrefix("0x") ?
-                game.accountAddress.lowercased() : "0x\(game.accountAddress.lowercased())"
-            return gameAddress == userAddress
+            let normalizedGameAddress = normalizeAddress(game.accountAddress)
+            return normalizedGameAddress == normalizedUserAddress
         }
         
-        print("🎮 User address (normalized): \(userAddress)")
+        print("🎮 User address (raw): \(rawAddress)")
+        print("🎮 User address (normalized): \(normalizedUserAddress)")
         print("🎮 Total games in system: \(dojoManager.games.count)")
         print("🎮 User's games found: \(filtered.count)")
         
@@ -32,10 +47,10 @@ struct GameSelectionSheet: View {
             print("⚠️ Games exist but none match user address")
             print("📋 Sample game addresses (first 5):")
             for (index, game) in dojoManager.games.prefix(5).enumerated() {
-                let normalizedGameAddr = game.accountAddress.lowercased().hasPrefix("0x") ?
-                    game.accountAddress.lowercased() : "0x\(game.accountAddress.lowercased())"
-                let matches = normalizedGameAddr == userAddress ? "✅ MATCH" : "❌"
-                print("  \(index + 1). \(normalizedGameAddr) \(matches)")
+                let normalizedGameAddr = normalizeAddress(game.accountAddress)
+                let matches = normalizedGameAddr == normalizedUserAddress ? "✅ MATCH" : "❌"
+                print("  \(index + 1). Raw: \(game.accountAddress)")
+                print("       Normalized: \(normalizedGameAddr) \(matches)")
             }
         }
         

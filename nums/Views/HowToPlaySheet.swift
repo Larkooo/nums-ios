@@ -27,7 +27,6 @@ struct HowToPlaySheet: View {
                                 .foregroundColor(.white.opacity(0.6))
                         }
                     }
-                    .padding(.bottom, 8)
                     
                     // Welcome text
                     Text("Welcome to Nums, a fully onchain game build by Cartridge using the Dojo Framework.")
