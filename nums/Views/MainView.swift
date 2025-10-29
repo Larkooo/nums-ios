@@ -116,17 +116,26 @@ struct MainView: View {
                     }
                     
                     // Balance
-                    HStack(spacing: 8) {
+                    HStack(spacing: 12) {
+                        Image("nums-icon")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 50, height: 22)
+                        
                         if dojoManager.isLoadingBalance {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Text(formatBalance(dojoManager.tokenBalance))
+                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
                         }
-                        Text(formatBalance(dojoManager.tokenBalance))
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
                     }
-                    .padding(.horizontal, 20)
-                    .frame(height: 50)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .frame(height: 58)
                     .background(Color.white.opacity(0.1))
                     .cornerRadius(12)
                     
@@ -401,8 +410,8 @@ struct MainView: View {
                 sessionManager.loadPersistedSession()
             }
             
-            // Fetch token balance and subscribe if session is active
-            if isSessionValid, let address = sessionManager.sessionAddress {
+            // Fetch token balance and subscribe if session is active AND Torii is connected
+            if isSessionValid, let address = sessionManager.sessionAddress, dojoManager.isConnected {
                 Task {
                     // Fetch initial balance
                     await dojoManager.fetchTokenBalance(for: address)
@@ -411,9 +420,19 @@ struct MainView: View {
                 }
             }
         }
+        .onChange(of: dojoManager.isConnected) { isConnected in
+            // When Torii client connects, fetch balance if we have a valid session
+            if isConnected, isSessionValid, let address = sessionManager.sessionAddress {
+                Task {
+                    print("🔄 Torii connected - fetching balance for session")
+                    await dojoManager.fetchTokenBalance(for: address)
+                    await dojoManager.subscribeToTokenBalance(for: address)
+                }
+            }
+        }
         .onChange(of: sessionManager.sessionAddress) { newAddress in
-            // Fetch balance and subscribe when session address changes
-            if isSessionValid, let address = newAddress {
+            // Fetch balance and subscribe when session address changes (only if Torii is connected)
+            if isSessionValid, let address = newAddress, dojoManager.isConnected {
                 Task {
                     // Fetch initial balance
                     await dojoManager.fetchTokenBalance(for: address)

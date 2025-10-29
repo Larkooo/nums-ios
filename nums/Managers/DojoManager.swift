@@ -247,9 +247,12 @@ class DojoManager: ObservableObject {
                     // U256 is typically a hex string, so we need to handle both hex and decimal
                     let balanceString = tokenBalance.balance.hasPrefix("0x") ? 
                         String(tokenBalance.balance.dropFirst(2)) : tokenBalance.balance
-                    if let balance = BInt(balanceString, radix: 16) ?? BInt(balanceString, radix: 10) {
-                        self.tokenBalance = balance
-                        print("✅ Token balance: \(self.tokenBalance)")
+                    if let balanceWei = BInt(balanceString, radix: 16) ?? BInt(balanceString, radix: 10) {
+                        // Convert from WEI to tokens (divide by 10^18)
+                        let divisor = BInt(10).power(18)
+                        self.tokenBalance = balanceWei / divisor
+                        print("✅ Token balance (WEI): \(balanceWei)")
+                        print("✅ Token balance (tokens): \(self.tokenBalance)")
                     } else {
                         self.tokenBalance = 0
                         print("⚠️ Failed to parse token balance: \(balanceString)")

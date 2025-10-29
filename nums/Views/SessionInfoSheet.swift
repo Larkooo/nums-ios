@@ -13,111 +13,94 @@ struct SessionInfoSheet: View {
     @ObservedObject var sessionManager: SessionManager
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                // Background
-                Color(red: 0.349, green: 0.122, blue: 1.0)
-                    .ignoresSafeArea()
+        ZStack {
+            // Background
+            Color(red: 0.349, green: 0.122, blue: 1.0)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Session Details Card
+                VStack(spacing: 16) {
+                    // Username
+                    InfoRow(
+                        icon: "person.circle.fill",
+                        label: "Username",
+                        value: sessionManager.sessionUsername ?? "Anonymous"
+                    )
+                    
+                    Divider().background(Color.white.opacity(0.2))
+                    
+                    // Address
+                    InfoRow(
+                        icon: "number.circle.fill",
+                        label: "Address",
+                        value: sessionManager.sessionAddress ?? "N/A",
+                        truncate: true
+                    )
+                    
+                    Divider().background(Color.white.opacity(0.2))
+                    
+                    // Expires At
+                    InfoRow(
+                        icon: "clock.circle.fill",
+                        label: "Expires",
+                        value: sessionManager.sessionExpiresAt.map { 
+                            Date(timeIntervalSince1970: TimeInterval($0)).formatted()
+                        } ?? "N/A"
+                    )
+                    
+                    Divider().background(Color.white.opacity(0.2))
+                    
+                    // App ID
+                    if let appId = sessionManager.appId, !appId.isEmpty {
+                        InfoRow(
+                            icon: "app.badge.fill",
+                            label: "App ID",
+                            value: appId
+                        )
+                        Divider().background(Color.white.opacity(0.2))
+                    }
+                    
+                    // Status
+                    HStack {
+                        Image(systemName: sessionManager.isExpired ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                            .foregroundColor(sessionManager.isExpired ? .orange : .green)
+                        Text("Status")
+                            .foregroundColor(.white.opacity(0.7))
+                        Spacer()
+                        Text(sessionManager.isExpired ? "Expired" : "Active")
+                            .foregroundColor(sessionManager.isExpired ? .orange : .green)
+                            .fontWeight(.semibold)
+                    }
+                    .font(.system(size: 16))
+                }
+                .padding(20)
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(16)
+                .padding(.horizontal, 20)
                 
-                VStack(spacing: 0) {
-                    // Session Details Card
-                    VStack(spacing: 16) {
-                        // Username
-                        InfoRow(
-                            icon: "person.circle.fill",
-                            label: "Username",
-                            value: sessionManager.sessionUsername ?? "Anonymous"
-                        )
-                        
-                        Divider().background(Color.white.opacity(0.2))
-                        
-                        // Address
-                        InfoRow(
-                            icon: "number.circle.fill",
-                            label: "Address",
-                            value: sessionManager.sessionAddress ?? "N/A",
-                            truncate: true
-                        )
-                        
-                        Divider().background(Color.white.opacity(0.2))
-                        
-                        // Expires At
-                        InfoRow(
-                            icon: "clock.circle.fill",
-                            label: "Expires",
-                            value: sessionManager.sessionExpiresAt.map { 
-                                Date(timeIntervalSince1970: TimeInterval($0)).formatted()
-                            } ?? "N/A"
-                        )
-                        
-                        Divider().background(Color.white.opacity(0.2))
-                        
-                        // App ID
-                        if let appId = sessionManager.appId, !appId.isEmpty {
-                            InfoRow(
-                                icon: "app.badge.fill",
-                                label: "App ID",
-                                value: appId
-                            )
-                            Divider().background(Color.white.opacity(0.2))
-                        }
-                        
-                        // Status
-                        HStack {
-                            Image(systemName: sessionManager.isExpired ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                                .foregroundColor(sessionManager.isExpired ? .orange : .green)
-                            Text("Status")
-                                .foregroundColor(.white.opacity(0.7))
-                            Spacer()
-                            Text(sessionManager.isExpired ? "Expired" : "Active")
-                                .foregroundColor(sessionManager.isExpired ? .orange : .green)
-                                .fontWeight(.semibold)
-                        }
-                        .font(.system(size: 16))
+                Spacer()
+                
+                // Disconnect Button
+                Button(action: {
+                    sessionManager.reset()
+                    dismiss()
+                }) {
+                    HStack {
+                        Image(systemName: "arrow.right.square.fill")
+                        Text("Disconnect")
+                            .fontWeight(.semibold)
                     }
-                    .padding(20)
-                    .background(Color.white.opacity(0.1))
+                    .font(.system(size: 18))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color.red.opacity(0.8))
                     .cornerRadius(16)
-                    .padding(20)
-                    
-                    Spacer()
-                    
-                    // Disconnect Button
-                    Button(action: {
-                        sessionManager.reset()
-                        dismiss()
-                    }) {
-                        HStack {
-                            Image(systemName: "arrow.right.square.fill")
-                            Text("Disconnect")
-                                .fontWeight(.semibold)
-                        }
-                        .font(.system(size: 18))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color.red.opacity(0.8))
-                        .cornerRadius(16)
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 20)
                 }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
             }
-            .navigationTitle("Session Info")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        dismiss()
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.white.opacity(0.6))
-                    }
-                }
-            }
-            .toolbarBackground(Color(red: 0.349, green: 0.122, blue: 1.0), for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
         }
     }
 }
