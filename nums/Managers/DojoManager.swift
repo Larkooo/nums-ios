@@ -1287,7 +1287,7 @@ class DojoManager: ObservableObject {
         
         // Convert parameters to felt252 (hex strings)
         let gameIdFelt = String(format: "0x%x", UInt64(gameId) ?? 0)
-        let slotFelt = String(format: "0x%x", slot)
+        let slotIndex = String(format: "0x%x", slot - 1) // Convert to 0-based index
         
         // Multi-call: VRF request_random + game set
         guard let session = sessionManager.sessionAccount else {
@@ -1297,16 +1297,18 @@ class DojoManager: ObservableObject {
         
         do {
             // Create both calls
+            // VRF request_random takes game address as both parameters
             let vrfCall = Call(
                 contractAddress: Constants.vrfAddress,
                 entrypoint: "request_random",
-                calldata: [gameIdFelt, "0x1"] // game_id, num_words (1)
+                calldata: [Constants.gameAddress, Constants.gameAddress]
             )
             
+            // Game set takes game ID and slot index (0-based)
             let setCall = Call(
                 contractAddress: Constants.gameAddress,
                 entrypoint: "set",
-                calldata: [gameIdFelt, slotFelt] // game_id, slot
+                calldata: [gameIdFelt, slotIndex]
             )
             
             // Execute multi-call

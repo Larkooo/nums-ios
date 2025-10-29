@@ -23,19 +23,6 @@ struct GameView: View {
     @State private var isSettingSlot = false
     @State private var selectedSlot: Int? = nil
     
-    // Power-up counts (extracted from powers bitfield)
-    private var powerUp1Count: Int {
-        Int((powers >> 0) & 0xFF)
-    }
-    
-    private var powerUp2Count: Int {
-        Int((powers >> 8) & 0xFF)
-    }
-    
-    private var powerUp3Count: Int {
-        Int((powers >> 16) & 0xFF)
-    }
-    
     var body: some View {
         ZStack {
             // Background
@@ -65,128 +52,60 @@ struct GameView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 
-                ScrollView {
-                    VStack(spacing: 24) {
-                        // Current Number Display
-                        VStack(spacing: 8) {
-                            Text("YOUR NUMBER IS...")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
-                                .foregroundColor(.white.opacity(0.7))
-                                .tracking(2)
-                            
-                            if currentNumber > 0 {
-                                Text("\(currentNumber)")
-                                    .font(.system(size: 120, weight: .black, design: .rounded))
-                                    .foregroundColor(.white)
-                                    .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 4)
-                            } else if isNewGame {
-                                Text("START")
-                                    .font(.system(size: 60, weight: .black, design: .rounded))
-                                    .foregroundColor(.white.opacity(0.5))
-                            } else {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                    .scaleEffect(2)
-                            }
-                        }
-                        .padding(.top, 20)
-                        
-                        // Power-Ups Section
-                        VStack(spacing: 12) {
-                            Text("POWER UPS")
-                                .font(.system(size: 16, weight: .bold, design: .rounded))
-                                .foregroundColor(.white.opacity(0.7))
-                                .tracking(2)
-                            
-                            HStack(spacing: 40) {
-                                // Power-up 1
-                                VStack(spacing: 8) {
-                                    Image(systemName: "hand.raised.fill")
-                                        .font(.system(size: 32))
-                                        .foregroundColor(powerUp1Count > 0 ? .white : .white.opacity(0.3))
-                                        .frame(width: 60, height: 60)
-                                        .background(Color.white.opacity(0.1))
-                                        .cornerRadius(12)
-                                    
-                                    HStack(spacing: 4) {
-                                        Text("\(powerUp1Count)")
-                                            .font(.system(size: 18, weight: .bold))
-                                        Image(systemName: "rotate.right")
-                                            .font(.system(size: 14))
-                                    }
-                                    .foregroundColor(.white.opacity(0.6))
-                                }
-                                
-                                // Power-up 2
-                                VStack(spacing: 8) {
-                                    Image(systemName: "arrow.clockwise")
-                                        .font(.system(size: 32))
-                                        .foregroundColor(powerUp2Count > 0 ? .white : .white.opacity(0.3))
-                                        .frame(width: 60, height: 60)
-                                        .background(Color.white.opacity(0.1))
-                                        .cornerRadius(12)
-                                    
-                                    HStack(spacing: 4) {
-                                        Text("\(powerUp2Count)")
-                                            .font(.system(size: 18, weight: .bold))
-                                        Image(systemName: "rotate.right")
-                                            .font(.system(size: 14))
-                                    }
-                                    .foregroundColor(.white.opacity(0.6))
-                                }
-                                
-                                // Power-up 3
-                                VStack(spacing: 8) {
-                                    Image(systemName: "wand.and.stars")
-                                        .font(.system(size: 32))
-                                        .foregroundColor(powerUp3Count > 0 ? .white : .white.opacity(0.3))
-                                        .frame(width: 60, height: 60)
-                                        .background(Color.white.opacity(0.1))
-                                        .cornerRadius(12)
-                                    
-                                    HStack(spacing: 4) {
-                                        Text("\(powerUp3Count)")
-                                            .font(.system(size: 18, weight: .bold))
-                                        Image(systemName: "rotate.right")
-                                            .font(.system(size: 14))
-                                    }
-                                    .foregroundColor(.white.opacity(0.6))
-                                }
-                            }
-                        }
-                        .padding(.vertical, 16)
-                        
-                        // Slots Grid (2 columns, 10 rows)
-                        VStack(spacing: 12) {
-                            ForEach(0..<10, id: \.self) { row in
-                                HStack(spacing: 40) {
-                                    // Left column
-                                    SlotButton(
-                                        slotNumber: row + 1,
-                                        isSet: setSlots.contains(row + 1),
-                                        isDisabled: isGameOver || isSettingSlot,
-                                        action: {
-                                            setSlot(row + 1)
-                                        }
-                                    )
-                                    
-                                    // Right column
-                                    SlotButton(
-                                        slotNumber: row + 11,
-                                        isSet: setSlots.contains(row + 11),
-                                        isDisabled: isGameOver || isSettingSlot,
-                                        action: {
-                                            setSlot(row + 11)
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 40)
-                        
-                        Spacer(minLength: 40)
+                // Current Number Display
+                VStack(spacing: 4) {
+                    Text("YOUR NUMBER IS...")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.7))
+                        .tracking(2)
+                    
+                    if currentNumber > 0 {
+                        Text("\(currentNumber)")
+                            .font(.system(size: 80, weight: .black, design: .rounded))
+                            .foregroundColor(.white)
+                            .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 4)
+                    } else if isNewGame {
+                        Text("START")
+                            .font(.system(size: 40, weight: .black, design: .rounded))
+                            .foregroundColor(.white.opacity(0.5))
+                    } else {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(1.5)
                     }
                 }
+                .padding(.top, 8)
+                .padding(.bottom, 12)
+                
+                // Slots Grid (2 columns, 10 rows)
+                VStack(spacing: 8) {
+                    ForEach(0..<10, id: \.self) { row in
+                        HStack(spacing: 30) {
+                            // Left column
+                            SlotButton(
+                                slotNumber: row + 1,
+                                isSet: setSlots.contains(row + 1),
+                                isDisabled: isGameOver || isSettingSlot,
+                                action: {
+                                    setSlot(row + 1)
+                                }
+                            )
+                            
+                            // Right column
+                            SlotButton(
+                                slotNumber: row + 11,
+                                isSet: setSlots.contains(row + 11),
+                                isDisabled: isGameOver || isSettingSlot,
+                                action: {
+                                    setSlot(row + 11)
+                                }
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, 30)
+                
+                Spacer(minLength: 8)
                 
                 // Bottom Jackpot Info
                 if let tournament = dojoManager.selectedTournament {
@@ -284,17 +203,17 @@ struct SlotButton: View {
     let action: () -> Void
     
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 12) {
             Text("\(slotNumber).")
-                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .font(.system(size: 20, weight: .bold, design: .rounded))
                 .foregroundColor(.white.opacity(0.6))
-                .frame(width: 50, alignment: .trailing)
+                .frame(width: 40, alignment: .trailing)
             
             Button(action: action) {
                 Text(isSet ? "✓" : "Set")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
-                    .frame(width: 100, height: 50)
+                    .frame(width: 80, height: 40)
                     .background(
                         isSet
                             ? Color.green.opacity(0.6)
