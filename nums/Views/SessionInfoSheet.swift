@@ -177,9 +177,12 @@ struct SessionInfoSheet: View {
             .padding(.top, 60)
         }
         .onChange(of: selectedDetent) { newDetent in
-            // Collapse policies when sheet is minimized
-            if newDetent == .medium && isPoliciesExpanded {
-                withAnimation(.spring(response: 0.3)) {
+            withAnimation(.spring(response: 0.3)) {
+                if newDetent == .large {
+                    // Expand policies when sheet is fully opened
+                    isPoliciesExpanded = true
+                } else if newDetent == .medium {
+                    // Collapse policies when sheet is minimized
                     isPoliciesExpanded = false
                 }
             }
