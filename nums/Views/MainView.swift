@@ -210,11 +210,9 @@ struct MainView: View {
                     } else {
                         // Show connect button
                         Button(action: {
-                            // Generate key and open session registration directly
-                            if sessionManager.privateKey.isEmpty {
-                                sessionManager.privateKey = generateRandomPrivateKey()
-                                sessionManager.updatePublicKey()
-                            }
+                            // Generate new keypair for each connection
+                            sessionManager.privateKey = generateRandomPrivateKey()
+                            sessionManager.updatePublicKey()
                             sessionManager.openSessionInWebView()
                         }) {
                             HStack(spacing: 8) {
@@ -411,11 +409,9 @@ struct MainView: View {
                     if isSessionValid {
                         showGameSelection = true
                     } else {
-                        // Prompt user to connect
-                        if sessionManager.privateKey.isEmpty {
-                            sessionManager.privateKey = generateRandomPrivateKey()
-                            sessionManager.updatePublicKey()
-                        }
+                        // Prompt user to connect with new keypair
+                        sessionManager.privateKey = generateRandomPrivateKey()
+                        sessionManager.updatePublicKey()
                         sessionManager.openSessionInWebView()
                     }
                 }) {
