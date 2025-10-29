@@ -246,7 +246,7 @@ struct GameRow: View {
     
     // Get score from model or default to 0
     private var score: Int {
-        gameModel?.score ?? 0
+        Int(gameModel?.score ?? 0)
     }
     
     var body: some View {

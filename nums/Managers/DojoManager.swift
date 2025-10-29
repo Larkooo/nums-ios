@@ -1187,7 +1187,7 @@ class DojoManager: ObservableObject {
     }
     
     private func parseGameModel(from entity: Entity, gameId: String) -> GameModel? {
-        guard let models = entity.models else { return nil }
+        let models = entity.models
         
         for model in models {
             if model.name == "NUMS-Game" {
