@@ -74,6 +74,7 @@ struct SessionInfoSheet: View {
                     }
                     .font(.system(size: 16))
                 }
+                .padding(.top, 20)
                 .padding(20)
                 .background(Color.white.opacity(0.1))
                 .cornerRadius(16)

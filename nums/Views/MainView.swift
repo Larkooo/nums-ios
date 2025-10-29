@@ -95,16 +95,16 @@ struct MainView: View {
             
             VStack(spacing: 0) {
                 // Top Bar
-                HStack(spacing: 8) {
+                HStack(spacing: 10) {
                     // NUMS icon button
                     Button(action: {}) {
                         Image("nums-icon")
                             .resizable()
                             .renderingMode(.template)
                             .aspectRatio(contentMode: .fit)
-                            .frame(width: 20, height: 28)
+                            .frame(width: 22, height: 30)
                             .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
+                            .frame(width: 50, height: 50)
                             .background(Color.white.opacity(0.1))
                             .cornerRadius(12)
                     }
@@ -114,29 +114,29 @@ struct MainView: View {
                         isSoundEnabled.toggle()
                     }) {
                         Image(systemName: isSoundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
-                            .font(.system(size: 18))
+                            .font(.system(size: 20))
                             .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
+                            .frame(width: 50, height: 50)
                             .background(Color.white.opacity(0.1))
                             .cornerRadius(12)
                     }
                     
                     // Balance
-                    HStack(spacing: 8) {
+                    HStack(spacing: 10) {
                         if dojoManager.isLoadingBalance {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         } else {
                             Text(formatBalance(dojoManager.tokenBalance))
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.6)
                         }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .frame(height: 44)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .frame(height: 50)
                     .background(Color.white.opacity(0.1))
                     .cornerRadius(12)
                     
@@ -148,21 +148,21 @@ struct MainView: View {
                         Button(action: {
                             showSessionInfo = true
                         }) {
-                            HStack(spacing: 6) {
+                            HStack(spacing: 8) {
                                 Image("controller-icon")
                                     .resizable()
                                     .renderingMode(.template)
                                     .aspectRatio(contentMode: .fit)
-                                    .frame(width: 16, height: 16)
+                                    .frame(width: 18, height: 18)
                                     .foregroundColor(.white)
                                 Text(sessionManager.sessionUsername ?? "User")
-                                    .font(.system(size: 15, weight: .semibold))
+                                    .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(.white)
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.7)
                             }
-                            .padding(.horizontal, 12)
-                            .frame(height: 44)
+                            .padding(.horizontal, 14)
+                            .frame(height: 50)
                             .background(Color.white.opacity(0.1))
                             .cornerRadius(12)
                         }
@@ -176,20 +176,20 @@ struct MainView: View {
                             }
                             sessionManager.openSessionInWebView()
                         }) {
-                            HStack(spacing: 6) {
+                            HStack(spacing: 8) {
                                 if sessionManager.isLoading {
                                     ProgressView()
                                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                 } else {
                                     Image(systemName: "person.crop.circle.badge.plus")
-                                        .font(.system(size: 16))
+                                        .font(.system(size: 18))
                                     Text("Connect")
-                                        .font(.system(size: 15, weight: .semibold))
+                                        .font(.system(size: 16, weight: .semibold))
                                 }
                             }
                             .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .frame(height: 44)
+                            .padding(.horizontal, 14)
+                            .frame(height: 50)
                             .background(Color.green.opacity(0.8))
                             .cornerRadius(12)
                         }
