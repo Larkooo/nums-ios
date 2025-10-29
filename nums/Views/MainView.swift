@@ -17,6 +17,7 @@ struct MainView: View {
     @State private var totalPages = 64
     @State private var showSessionInfo = false
     @State private var showGameSelection = false
+    @State private var showHowToPlay = false
     @State private var isSoundEnabled = true
     @State private var currentTime = Date() // For updating countdown timer
     
@@ -132,6 +133,18 @@ struct MainView: View {
                             .renderingMode(.template)
                             .aspectRatio(contentMode: .fit)
                             .frame(width: 22, height: 30)
+                            .foregroundColor(.white)
+                            .frame(width: 50, height: 50)
+                            .background(Color.white.opacity(0.1))
+                            .cornerRadius(12)
+                    }
+                    
+                    // Info button (How to Play)
+                    Button(action: {
+                        showHowToPlay = true
+                    }) {
+                        Image(systemName: "info.circle.fill")
+                            .font(.system(size: 20))
                             .foregroundColor(.white)
                             .frame(width: 50, height: 50)
                             .background(Color.white.opacity(0.1))
@@ -448,6 +461,11 @@ struct MainView: View {
             GameSelectionSheet()
                 .environmentObject(dojoManager)
                 .environmentObject(sessionManager)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showHowToPlay) {
+            HowToPlaySheet()
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
