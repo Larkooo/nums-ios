@@ -20,7 +20,8 @@ struct Constants {
     // NUMS Token Contract
     static let numsAddress = "0x0e69b167a18be231ef14ca474e29cf6356333038162077b551a17d25d166af"
     
-    // Game Contract (for session policies - start/set methods)
+    // Game Contract (for session policies - start/set methods AND "Minted By" filter)
+    // This contract mints game tokens and handles game logic
     static let gameAddress = "0x0277902ea7ce3bbdc25304f3cf1caaed7b6f22d722a8b16827ce11fd5fcb8ac6"
     
     // MARK: - Common Token Contracts (for reference)
