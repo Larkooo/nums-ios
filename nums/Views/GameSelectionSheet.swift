@@ -122,21 +122,31 @@ struct GameRow: View {
                 // TODO: Start or continue game
                 print("🎮 \(hasGameModel ? "Continue" : "Start") game: \(game.tokenId)")
             }) {
-                Text(hasGameModel ? "Continue" : "Play")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(hasGameModel ? .white : Color(red: 0.349, green: 0.122, blue: 1.0))
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                    .background(
-                        hasGameModel
-                            ? Color.white.opacity(0.2)
-                            : LinearGradient(
-                                colors: [Color.yellow, Color.orange],
-                                startPoint: .top,
-                                endPoint: .bottom
+                Group {
+                    if hasGameModel {
+                        Text("Continue")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(12)
+                    } else {
+                        Text("Play")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(Color(red: 0.349, green: 0.122, blue: 1.0))
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.yellow, Color.orange],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
                             )
-                    )
-                    .cornerRadius(12)
+                            .cornerRadius(12)
+                    }
+                }
             }
         }
         .padding(16)
