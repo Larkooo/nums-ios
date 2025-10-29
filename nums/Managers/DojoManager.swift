@@ -80,11 +80,53 @@ struct PlayerLeaderboard: Identifiable {
 
 // Game Model (NUMS-Game entity)
 struct GameModel: Identifiable {
-    let id: String // token_id
-    let tokenId: String
-    let score: Int?
-    let state: String?
-    // Add more fields as needed from NUMS-Game model
+    let id: String // token_id as string
+    let tokenId: UInt64
+    let over: Bool
+    let claimed: Bool
+    let level: UInt8
+    let slotCount: UInt8
+    let slotMin: UInt16
+    let slotMax: UInt16
+    let number: UInt16
+    let nextNumber: UInt16
+    let tournamentId: UInt16
+    let powers: UInt16
+    let reward: UInt32
+    let score: UInt32
+    let slots: String // felt252 encoded slots
+    
+    // Computed property to extract set slots from the felt252 encoded slots
+    var setSlots: Set<Int> {
+        // Parse the base64-encoded slots data
+        // For now, we'll return empty and implement parsing later
+        // The slots field is a felt252 (base64) that encodes which slots are set
+        return parseSlots(from: slots)
+    }
+    
+    private func parseSlots(from felt252: String) -> Set<Int> {
+        // Decode base64 to bytes
+        guard let data = Data(base64Encoded: felt252) else {
+            return []
+        }
+        
+        // The slots are stored as a bitfield
+        // Each bit represents whether a slot is set (1) or not (0)
+        var setSlots: Set<Int> = []
+        
+        for (byteIndex, byte) in data.enumerated() {
+            for bitIndex in 0..<8 {
+                if (byte & (1 << bitIndex)) != 0 {
+                    let slotNumber = byteIndex * 8 + bitIndex + 1
+                    if slotNumber <= slotCount {
+                        setSlots.insert(slotNumber)
+                    }
+                }
+            }
+        }
+        
+        return setSlots
+    }
 }
 
 @MainActor
@@ -385,7 +427,7 @@ class DojoManager: ObservableObject {
                     
                     if let balanceValue = BInt(balanceString, radix: 16) ?? BInt(balanceString, radix: 10) {
                         // Convert from WEI to tokens (divide by 10^18)
-                        let divisor = BInt(10).power(18)
+                        let divisor = BInt(10) ** 18
                         let tokenAmount = balanceValue / divisor
                         
                         self.tokenBalance = tokenAmount
@@ -1064,6 +1106,225 @@ class DojoManager: ObservableObject {
         } catch {
             print("❌ Leaderboard subscription error: \(error)")
         }
+    }
+    
+    // MARK: - Game Management
+    
+    func fetchGameModel(gameId: String) async -> GameModel? {
+        guard let client = toriiClient else {
+            print("⚠️ Torii client not initialized")
+            return nil
+        }
+        
+        do {
+            print("🎮 Fetching game model for game #\(gameId)...")
+            
+            // Create query for NUMS-Game model with game ID filter
+            let query = Query(
+                worldAddresses: [],
+                pagination: Pagination(
+                    cursor: nil,
+                    limit: 1,
+                    direction: .forward,
+                    orderBy: []
+                ),
+                clause: nil, // TODO: Add filter for game ID if needed
+                noHashedKeys: false,
+                models: ["NUMS-Game"],
+                historical: false
+            )
+            
+            let pageEntity = try client.entities(query: query)
+            
+            // Parse and find the game with matching ID
+            for entity in pageEntity.items {
+                if let parsedGame = parseGameModel(from: entity, gameId: gameId) {
+                    print("✅ Game model loaded for #\(gameId)")
+                    return parsedGame
+                }
+            }
+            
+            print("⚠️ Game model not found for #\(gameId)")
+            return nil
+        } catch {
+            print("❌ Game model fetch error: \(error)")
+            return nil
+        }
+    }
+    
+    private func parseGameModel(from entity: Entity, gameId: String) -> GameModel? {
+        guard let models = entity.models else { return nil }
+        
+        for model in models {
+            if model.name == "NUMS-Game" {
+                // Extract fields from the model
+                var tokenId: UInt64 = 0
+                var over = false
+                var claimed = false
+                var level: UInt8 = 1
+                var slotCount: UInt8 = 20
+                var slotMin: UInt16 = 1
+                var slotMax: UInt16 = 999
+                var number: UInt16 = 0
+                var nextNumber: UInt16 = 0
+                var tournamentId: UInt16 = 0
+                var powers: UInt16 = 0
+                var reward: UInt32 = 0
+                var score: UInt32 = 0
+                var slots: String = ""
+                
+                for child in model.children {
+                    switch child.name {
+                    case "id":
+                        tokenId = extractUInt64(from: child.ty)
+                    case "over":
+                        over = extractBool(from: child.ty)
+                    case "claimed":
+                        claimed = extractBool(from: child.ty)
+                    case "level":
+                        level = extractUInt8(from: child.ty)
+                    case "slot_count":
+                        slotCount = extractUInt8(from: child.ty)
+                    case "slot_min":
+                        slotMin = extractUInt16(from: child.ty)
+                    case "slot_max":
+                        slotMax = extractUInt16(from: child.ty)
+                    case "number":
+                        number = extractUInt16(from: child.ty)
+                    case "next_number":
+                        nextNumber = extractUInt16(from: child.ty)
+                    case "tournament_id":
+                        tournamentId = extractUInt16(from: child.ty)
+                    case "powers":
+                        powers = extractUInt16(from: child.ty)
+                    case "reward":
+                        reward = extractUInt32(from: child.ty)
+                    case "score":
+                        score = extractUInt32(from: child.ty)
+                    case "slots":
+                        slots = extractString(from: child.ty)
+                    default:
+                        break
+                    }
+                }
+                
+                // Check if this is the game we're looking for
+                if String(tokenId) == gameId {
+                    return GameModel(
+                        id: gameId,
+                        tokenId: tokenId,
+                        over: over,
+                        claimed: claimed,
+                        level: level,
+                        slotCount: slotCount,
+                        slotMin: slotMin,
+                        slotMax: slotMax,
+                        number: number,
+                        nextNumber: nextNumber,
+                        tournamentId: tournamentId,
+                        powers: powers,
+                        reward: reward,
+                        score: score,
+                        slots: slots
+                    )
+                }
+            }
+        }
+        
+        return nil
+    }
+    
+    func startGame(gameId: String, tournamentId: Int, sessionManager: SessionManager) async {
+        print("🎮 Starting new game #\(gameId) for tournament #\(tournamentId)")
+        
+        // Convert game ID to felt252 (hex string)
+        let gameIdFelt = String(format: "0x%x", UInt64(gameId) ?? 0)
+        let tournamentIdFelt = String(format: "0x%x", tournamentId)
+        
+        await sessionManager.executeTransaction(
+            contractAddress: Constants.gameAddress,
+            entrypoint: "start",
+            calldata: [gameIdFelt, tournamentIdFelt]
+        )
+    }
+    
+    func setGameSlot(gameId: String, slot: UInt8, sessionManager: SessionManager) async {
+        print("🎮 Setting slot #\(slot) for game #\(gameId)")
+        
+        // Convert parameters to felt252 (hex strings)
+        let gameIdFelt = String(format: "0x%x", UInt64(gameId) ?? 0)
+        let slotFelt = String(format: "0x%x", slot)
+        
+        // Multi-call: VRF request_random + game set
+        guard let session = sessionManager.sessionAccount else {
+            print("❌ No session account available")
+            return
+        }
+        
+        do {
+            // Create both calls
+            let vrfCall = Call(
+                contractAddress: Constants.vrfAddress,
+                entrypoint: "request_random",
+                calldata: [gameIdFelt, "0x1"] // game_id, num_words (1)
+            )
+            
+            let setCall = Call(
+                contractAddress: Constants.gameAddress,
+                entrypoint: "set",
+                calldata: [gameIdFelt, slotFelt] // game_id, slot
+            )
+            
+            // Execute multi-call
+            let txHash = try session.executeFromOutside(calls: [vrfCall, setCall])
+            
+            print("✅ Slot set transaction submitted: \(txHash)")
+            print("💡 Game state will update via subscription")
+            
+        } catch {
+            print("❌ Failed to set slot: \(error.localizedDescription)")
+        }
+    }
+    
+    // MARK: - Helper functions for extracting unsigned integers
+    
+    private func extractUInt8(from ty: Ty) -> UInt8 {
+        if let primitive = ty.primitive, let u8Value = primitive.u8 {
+            return u8Value
+        }
+        return 0
+    }
+    
+    private func extractUInt16(from ty: Ty) -> UInt16 {
+        if let primitive = ty.primitive, let u16Value = primitive.u16 {
+            return u16Value
+        }
+        return 0
+    }
+    
+    private func extractUInt32(from ty: Ty) -> UInt32 {
+        if let primitive = ty.primitive, let u32Value = primitive.u32 {
+            return u32Value
+        }
+        return 0
+    }
+    
+    private func extractUInt64(from ty: Ty) -> UInt64 {
+        if let primitive = ty.primitive {
+            if let u64Value = primitive.u64 {
+                return u64Value
+            }
+            if let u32Value = primitive.u32 {
+                return UInt64(u32Value)
+            }
+            if let u16Value = primitive.u16 {
+                return UInt64(u16Value)
+            }
+            if let u8Value = primitive.u8 {
+                return UInt64(u8Value)
+            }
+        }
+        return 0
     }
 }
 

@@ -224,6 +224,8 @@ struct GameSelectionSheet: View {
 struct GameRow: View {
     let game: Game
     @ObservedObject var dojoManager: DojoManager
+    @EnvironmentObject var sessionManager: SessionManager
+    @State private var showGameView = false
     
     // Check if a NUMS-Game model exists for this token
     private var hasGameModel: Bool {
@@ -275,8 +277,8 @@ struct GameRow: View {
             
             // Play/Continue button
             Button(action: {
-                // TODO: Start or continue game
                 print("🎮 \(hasGameModel ? "Continue" : "Start") game: \(game.tokenId)")
+                showGameView = true
             }) {
                 Group {
                     if hasGameModel {
@@ -308,6 +310,14 @@ struct GameRow: View {
         .padding(16)
         .background(Color.white.opacity(0.1))
         .cornerRadius(16)
+        .fullScreenCover(isPresented: $showGameView) {
+            GameView(
+                gameTokenId: game.tokenId,
+                isNewGame: !hasGameModel
+            )
+            .environmentObject(dojoManager)
+            .environmentObject(sessionManager)
+        }
     }
 }
 
