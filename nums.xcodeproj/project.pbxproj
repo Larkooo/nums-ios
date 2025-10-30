@@ -32,8 +32,8 @@
 		CD52CB2E2EB268440077D39E /* nums.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = nums.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CD52CB3B2EB268450077D39E /* numsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = numsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CD52CB452EB268450077D39E /* numsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = numsUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		CD52CB742EB26BD10077D39E /* dojo_uniffi.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = dojo_uniffi.xcframework; path = ../dojo.c/target/dojo_uniffi.xcframework; sourceTree = "<group>"; };
-		CD52CB782EB26BE40077D39E /* controller_uniffi.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = controller_uniffi.xcframework; path = ../dojo.c/controller.c/target/controller_uniffi.xcframework; sourceTree = "<group>"; };
+		CD52CB742EB26BD10077D39E /* dojo_uniffi.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = dojo_uniffi.xcframework; path = Frameworks/dojo_uniffi.xcframework; sourceTree = "<group>"; };
+		CD52CB782EB26BE40077D39E /* controller_uniffi.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = controller_uniffi.xcframework; path = Frameworks/controller_uniffi.xcframework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
