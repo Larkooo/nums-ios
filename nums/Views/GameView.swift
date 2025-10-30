@@ -23,6 +23,7 @@ struct GameView: View {
     @State private var slotValues: [UInt16] = []
     @State private var isSettingSlot = false
     @State private var selectedSlot: Int? = nil
+    @State private var dragOffset: CGFloat = 0
     
     var body: some View {
         ZStack {
@@ -54,20 +55,21 @@ struct GameView: View {
                 .padding(.top, 8)
                 
                 // Current Number Display
-                VStack(spacing: 4) {
+                VStack(spacing: 8) {
                     Text("YOUR NUMBER IS...")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundColor(.white.opacity(0.7))
-                        .tracking(2)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.6))
+                        .tracking(2.5)
                     
                     if currentNumber > 0 {
                         Text("\(currentNumber)")
-                            .font(.system(size: 80, weight: .black, design: .rounded))
+                            .font(.system(size: 72, weight: .black, design: .rounded))
                             .foregroundColor(.white)
-                            .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 4)
+                            .shadow(color: .purple.opacity(0.6), radius: 12, x: 0, y: 4)
+                            .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
                     } else if isNewGame {
                         Text("START")
-                            .font(.system(size: 40, weight: .black, design: .rounded))
+                            .font(.system(size: 36, weight: .black, design: .rounded))
                             .foregroundColor(.white.opacity(0.5))
                     } else {
                         ProgressView()
@@ -75,11 +77,12 @@ struct GameView: View {
                             .scaleEffect(1.5)
                     }
                 }
+                .frame(height: 100)
                 .padding(.top, 8)
-                .padding(.bottom, 12)
+                .padding(.bottom, 16)
                 
                 // Slots Grid (2 columns, 10 rows) - Centered with padding
-                VStack(spacing: 10) {
+                VStack(spacing: 8) {
                     ForEach(0..<10, id: \.self) { row in
                         HStack(spacing: 12) {
                             // Left column
@@ -108,43 +111,103 @@ struct GameView: View {
                 }
                 .padding(.horizontal, 40)
                 
-                Spacer(minLength: 8)
+                Spacer(minLength: 32)
                 
                 // Bottom Score and Reward Info
                 HStack(spacing: 0) {
                     // Score
-                    VStack(alignment: .center, spacing: 4) {
+                    VStack(alignment: .center, spacing: 8) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.purple.opacity(0.8))
                         Text("SCORE")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundColor(.white.opacity(0.6))
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.5))
+                            .tracking(1)
                         Text("\(score)")
-                            .font(.system(size: 28, weight: .black, design: .rounded))
+                            .font(.system(size: 32, weight: .black, design: .rounded))
                             .foregroundColor(.white)
+                            .shadow(color: .purple.opacity(0.3), radius: 4, x: 0, y: 2)
                     }
                     .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
                     
                     Divider()
-                        .frame(width: 1, height: 50)
-                        .background(Color.white.opacity(0.2))
+                        .frame(width: 2, height: 80)
+                        .background(
+                            LinearGradient(
+                                colors: [.white.opacity(0.1), .white.opacity(0.3), .white.opacity(0.1)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
                     
                     // Reward
-                    VStack(alignment: .center, spacing: 4) {
+                    VStack(alignment: .center, spacing: 8) {
+                        Image(systemName: "trophy.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.yellow.opacity(0.9))
                         Text("REWARD")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundColor(.white.opacity(0.6))
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.5))
+                            .tracking(1)
                         Text("\(reward)")
-                            .font(.system(size: 28, weight: .black, design: .rounded))
+                            .font(.system(size: 32, weight: .black, design: .rounded))
                             .foregroundColor(.yellow)
+                            .shadow(color: .yellow.opacity(0.3), radius: 4, x: 0, y: 2)
                     }
                     .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
                 }
-                .padding(20)
-                .background(Color.black.opacity(0.3))
-                .cornerRadius(16)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 20)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.black.opacity(0.4), Color.black.opacity(0.3)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [.white.opacity(0.3), .white.opacity(0.1)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1
+                                )
+                        )
+                        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+                )
+                .padding(.horizontal, 20)
+                .padding(.bottom, 24)
             }
         }
+        .offset(x: dragOffset)
+        .gesture(
+            DragGesture()
+                .onChanged { gesture in
+                    // Only allow dragging from left edge (swipe right)
+                    if gesture.translation.width > 0 {
+                        dragOffset = gesture.translation.width
+                    }
+                }
+                .onEnded { gesture in
+                    if gesture.translation.width > 100 {
+                        // Swipe threshold met, dismiss
+                        dismiss()
+                    } else {
+                        // Animate back
+                        withAnimation(.spring()) {
+                            dragOffset = 0
+                        }
+                    }
+                }
+        )
         .navigationBarHidden(true)
         .onAppear {
             print("🎮 GameView appeared for token: \(gameTokenId), isNewGame: \(isNewGame)")
@@ -269,31 +332,65 @@ struct SlotButton: View {
     
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 Text("\(slotNumber).")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundColor(.white.opacity(0.6))
-                    .frame(width: 35, alignment: .trailing)
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.5))
+                    .frame(width: 32, alignment: .trailing)
                 
                 Text(displayText)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .frame(width: 70)
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundColor(isSet ? .white : .white.opacity(0.4))
+                    .frame(width: 65)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 44)
+            .frame(height: 48)
             .background(
-                isSet
-                    ? Color.green.opacity(0.6)
-                    : Color.white.opacity(0.15)
+                Group {
+                    if isSet {
+                        LinearGradient(
+                            colors: [Color.green.opacity(0.7), Color.green.opacity(0.5)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    } else {
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.2), Color.white.opacity(0.12)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    }
+                }
             )
-            .cornerRadius(12)
+            .cornerRadius(14)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(
+                        LinearGradient(
+                            colors: isSet
+                                ? [Color.green.opacity(0.6), Color.green.opacity(0.3)]
+                                : [Color.white.opacity(0.3), Color.white.opacity(0.1)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1.5
+                    )
             )
+            .shadow(color: isSet ? Color.green.opacity(0.3) : Color.black.opacity(0.2), radius: isSet ? 6 : 3, x: 0, y: 2)
         }
         .disabled(isDisabled || isSet)
+        .buttonStyle(ScaleButtonStyle())
+    }
+}
+
+// Custom button style for scale effect
+struct ScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
 }
 
