@@ -167,23 +167,31 @@ struct MainView: View {
             return
         }
         
-        // Check if leaderboard has finished loading (or has data)
-        let leaderboardReady = !dojoManager.isLoadingLeaderboard || !dojoManager.arcadeLeaderboard.isEmpty
+        // 1. Check if tournaments are loaded
+        let tournamentsReady = !dojoManager.tournaments.isEmpty && !dojoManager.isLoadingTournaments
         
-        // Check if balance has loaded (if we have a session)
+        // 2. Check if leaderboard has finished loading (or has data)
+        let leaderboardReady = !dojoManager.isLoadingLeaderboard && !dojoManager.arcadeLeaderboard.isEmpty
+        
+        // 3. Check if balance and games have loaded (if we have a session)
         let balanceReady: Bool
+        let gamesReady: Bool
         if isSessionValid {
             balanceReady = !dojoManager.isLoadingBalance
+            gamesReady = !dojoManager.isLoadingGames
         } else {
             balanceReady = true // No session, so balance isn't needed
+            gamesReady = true // No session, so games aren't needed
         }
         
         print("🔍 Checking initial load:")
-        print("   - Leaderboard ready: \(leaderboardReady) (isLoading: \(dojoManager.isLoadingLeaderboard), count: \(dojoManager.arcadeLeaderboard.count))")
+        print("   - Tournaments ready: \(tournamentsReady) (count: \(dojoManager.tournaments.count), isLoading: \(dojoManager.isLoadingTournaments))")
+        print("   - Leaderboard ready: \(leaderboardReady) (count: \(dojoManager.arcadeLeaderboard.count), isLoading: \(dojoManager.isLoadingLeaderboard))")
         print("   - Balance ready: \(balanceReady) (isSessionValid: \(isSessionValid), isLoadingBalance: \(dojoManager.isLoadingBalance))")
+        print("   - Games ready: \(gamesReady) (count: \(dojoManager.games.count), isLoadingGames: \(dojoManager.isLoadingGames))")
         
-        // Mark as complete when both are ready
-        if leaderboardReady && balanceReady {
+        // Mark as complete when ALL required data is ready
+        if tournamentsReady && leaderboardReady && balanceReady && gamesReady {
             print("✅ Initial load complete - showing main content")
             isInitialLoadComplete = true
         } else {
@@ -203,6 +211,135 @@ struct MainView: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: isInitialLoadComplete)
+        .onAppear {
+            print("🚀 MainView appeared - starting initialization")
+            
+            // Check for persisted session on app launch
+            if sessionManager.sessionAccount == nil {
+                sessionManager.loadPersistedSession()
+            }
+            
+            // Fetch token balance and subscribe if session is active AND Torii is connected
+            if isSessionValid, let address = sessionManager.sessionAddress, dojoManager.isConnected {
+                Task {
+                    // Fetch initial balance
+                    await dojoManager.fetchTokenBalance(for: address)
+                    // Subscribe to balance updates
+                    await dojoManager.subscribeToTokenBalance(for: address)
+                    // Preload user's games for smooth Play button experience
+                    await dojoManager.fetchUserGames(for: address)
+                    // Note: fetchAllGames() is called during Torii initialization for leaderboard
+                    
+                    // Mark initial load as complete when all data is ready
+                    await MainActor.run {
+                        checkInitialLoadComplete()
+                    }
+                }
+            } else {
+                // If no session, just wait for leaderboard
+                print("⏭️ No session - skipping balance fetch, waiting for leaderboard")
+                checkInitialLoadComplete()
+            }
+            
+            // Start timer to update countdown every second
+            Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+                currentTime = Date()
+            }
+            
+            // Check completion after a short delay to ensure state is updated
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                checkInitialLoadComplete()
+            }
+            
+            // Also check every second until complete
+            Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
+                checkInitialLoadComplete()
+                if isInitialLoadComplete {
+                    timer.invalidate()
+                }
+            }
+            
+            // Fallback timeout - show main view after 5 seconds even if loading isn't complete
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                if !isInitialLoadComplete {
+                    print("⚠️ Timeout reached - forcing initial load complete")
+                    isInitialLoadComplete = true
+                }
+            }
+        }
+        .onChange(of: dojoManager.isConnected) { isConnected in
+            // When Torii client connects, fetch balance if we have a valid session
+            if isConnected, isSessionValid, let address = sessionManager.sessionAddress {
+                Task {
+                    print("🔄 Torii connected - fetching balance for session")
+                    await dojoManager.fetchTokenBalance(for: address)
+                    await dojoManager.subscribeToTokenBalance(for: address)
+                    await dojoManager.fetchUserGames(for: address)
+                    // Note: fetchAllGames() is already called during Torii initialization
+                    
+                    await MainActor.run {
+                        checkInitialLoadComplete()
+                    }
+                }
+            } else if isConnected {
+                // Torii connected but no session - just mark as ready
+                print("🔄 Torii connected (no session) - checking completion")
+                checkInitialLoadComplete()
+            }
+        }
+        .onChange(of: sessionManager.sessionAddress) { newAddress in
+            // Fetch balance and subscribe when session address changes (only if Torii is connected)
+            if isSessionValid, let address = newAddress, dojoManager.isConnected {
+                Task {
+                    // Fetch initial balance
+                    await dojoManager.fetchTokenBalance(for: address)
+                    // Subscribe to balance updates
+                    await dojoManager.subscribeToTokenBalance(for: address)
+                    // Preload user's games
+                    await dojoManager.fetchUserGames(for: address)
+                    // Note: Global games and leaderboard remain populated from fetchAllGames()
+                }
+            } else {
+                // Reset balance when disconnected (keep global games/leaderboard)
+                dojoManager.tokenBalance = 0
+            }
+        }
+        .onChange(of: dojoManager.isLoadingLeaderboard) { isLoading in
+            // Check if we can complete initial load when leaderboard finishes loading
+            if !isLoading {
+                checkInitialLoadComplete()
+            }
+        }
+        .onChange(of: dojoManager.isLoadingBalance) { isLoading in
+            // Check if we can complete initial load when balance finishes loading
+            if !isLoading {
+                checkInitialLoadComplete()
+            }
+        }
+        .onChange(of: dojoManager.arcadeLeaderboard.count) { count in
+            // Check completion when leaderboard data arrives
+            if count > 0 {
+                checkInitialLoadComplete()
+            }
+        }
+        .onChange(of: dojoManager.isLoadingTournaments) { isLoading in
+            // Check completion when tournaments finish loading
+            if !isLoading {
+                checkInitialLoadComplete()
+            }
+        }
+        .onChange(of: dojoManager.isLoadingGames) { isLoading in
+            // Check completion when games finish loading
+            if !isLoading {
+                checkInitialLoadComplete()
+            }
+        }
+        .onChange(of: dojoManager.tournaments.count) { count in
+            // Check completion when tournaments data arrives
+            if count > 0 {
+                checkInitialLoadComplete()
+            }
+        }
     }
     
     private var mainContent: some View {
@@ -474,24 +611,10 @@ struct MainView: View {
                     .padding(.horizontal, 20)
                     .padding(.vertical, 12)
                     
-                    // Entries
-                    if dojoManager.isLoadingLeaderboard && leaderboard.isEmpty {
-                        // Show loading indicator on first load (centered in leaderboard area)
-                        VStack(spacing: 16) {
-                            Spacer()
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .scaleEffect(1.5)
-                            Text("Loading leaderboard...")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.white.opacity(0.7))
-                            Spacer()
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else {
-                        ScrollView {
-                            LazyVStack(spacing: 8) {
-                                ForEach(leaderboard) { entry in
+                    // Entries (leaderboard is preloaded, no loading indicator needed)
+                    ScrollView {
+                        LazyVStack(spacing: 8) {
+                            ForEach(leaderboard) { entry in
                                 HStack {
                                     Text("\(entry.rank)")
                                         .font(.system(size: 18, weight: .bold, design: .rounded))
@@ -551,7 +674,6 @@ struct MainView: View {
                                     .padding(.bottom, 20)
                             }
                         }
-                    }
                     }
                 }
                 .frame(maxHeight: .infinity)
@@ -660,113 +782,6 @@ struct MainView: View {
             HowToPlaySheet()
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
-        }
-        .onAppear {
-            // Check for persisted session on app launch
-            if sessionManager.sessionAccount == nil {
-                sessionManager.loadPersistedSession()
-            }
-            
-            // Fetch token balance and subscribe if session is active AND Torii is connected
-            if isSessionValid, let address = sessionManager.sessionAddress, dojoManager.isConnected {
-                Task {
-                    // Fetch initial balance
-                    await dojoManager.fetchTokenBalance(for: address)
-                    // Subscribe to balance updates
-                    await dojoManager.subscribeToTokenBalance(for: address)
-                    // Preload user's games for smooth Play button experience
-                    await dojoManager.fetchUserGames(for: address)
-                    // Note: fetchAllGames() is called during Torii initialization for leaderboard
-                    
-                    // Mark initial load as complete when all data is ready
-                    await MainActor.run {
-                        checkInitialLoadComplete()
-                    }
-                }
-            } else {
-                // If no session, just wait for leaderboard
-                checkInitialLoadComplete()
-            }
-            
-            // Start timer to update countdown every second
-            Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-                currentTime = Date()
-            }
-            
-            // Check completion after a short delay to ensure state is updated
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                checkInitialLoadComplete()
-            }
-            
-            // Also check every second until complete
-            Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
-                checkInitialLoadComplete()
-                if isInitialLoadComplete {
-                    timer.invalidate()
-                }
-            }
-            
-            // Fallback timeout - show main view after 5 seconds even if loading isn't complete
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-                if !isInitialLoadComplete {
-                    print("⚠️ Timeout reached - forcing initial load complete")
-                    isInitialLoadComplete = true
-                }
-            }
-        }
-        .onChange(of: dojoManager.isConnected) { isConnected in
-            // When Torii client connects, fetch balance if we have a valid session
-            if isConnected, isSessionValid, let address = sessionManager.sessionAddress {
-                Task {
-                    print("🔄 Torii connected - fetching balance for session")
-                    await dojoManager.fetchTokenBalance(for: address)
-                    await dojoManager.subscribeToTokenBalance(for: address)
-                    await dojoManager.fetchUserGames(for: address)
-                    // Note: fetchAllGames() is already called during Torii initialization
-                    
-                    await MainActor.run {
-                        checkInitialLoadComplete()
-                    }
-                }
-            } else if isConnected {
-                // Torii connected but no session - just mark as ready
-                checkInitialLoadComplete()
-            }
-        }
-        .onChange(of: sessionManager.sessionAddress) { newAddress in
-            // Fetch balance and subscribe when session address changes (only if Torii is connected)
-            if isSessionValid, let address = newAddress, dojoManager.isConnected {
-                Task {
-                    // Fetch initial balance
-                    await dojoManager.fetchTokenBalance(for: address)
-                    // Subscribe to balance updates
-                    await dojoManager.subscribeToTokenBalance(for: address)
-                    // Preload user's games
-                    await dojoManager.fetchUserGames(for: address)
-                    // Note: Global games and leaderboard remain populated from fetchAllGames()
-                }
-            } else {
-                // Reset balance when disconnected (keep global games/leaderboard)
-                dojoManager.tokenBalance = 0
-            }
-        }
-        .onChange(of: dojoManager.isLoadingLeaderboard) { isLoading in
-            // Check if we can complete initial load when leaderboard finishes loading
-            if !isLoading {
-                checkInitialLoadComplete()
-            }
-        }
-        .onChange(of: dojoManager.isLoadingBalance) { isLoading in
-            // Check if we can complete initial load when balance finishes loading
-            if !isLoading {
-                checkInitialLoadComplete()
-            }
-        }
-        .onChange(of: dojoManager.arcadeLeaderboard.count) { count in
-            // Check completion when leaderboard data arrives
-            if count > 0 {
-                checkInitialLoadComplete()
-            }
         }
     }
 }
