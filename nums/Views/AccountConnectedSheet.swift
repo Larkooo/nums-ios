@@ -20,10 +20,13 @@ struct AccountConnectedSheet: View {
             
             VStack(spacing: 24) {
                 // Controller Icon
-                Image(systemName: "gamecontroller.fill")
-                    .font(.system(size: 70))
+                Image("controller-icon")
+                    .resizable()
+                    .renderingMode(.template)
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 70, height: 70)
                     .foregroundColor(.white)
-                    .padding(.top, 20)
+                    .padding(.top, 60)
                 
                 // Title
                 Text("Account Connected!")
