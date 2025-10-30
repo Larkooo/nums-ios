@@ -98,6 +98,7 @@ struct PlayerLeaderboard: Identifiable {
 struct GameData {
     let tokenId: String
     let score: UInt32
+    let reward: UInt32
 }
 
 // Game Model (NUMS-Game entity)
@@ -344,22 +345,20 @@ class DojoManager: ObservableObject {
         do {
             print("📊 Fetching leaderboard via SQL for tournament #\(tournamentId)...")
             
-            // SQL query to get player leaderboard with game counts and usernames
+            // SQL query to get player leaderboard with proper joins
             let query = """
-            SELECT 
-                g.external_token_id as token_id,
-                g.external_owner as owner,
-                g.external_tournament_id as tournament_id,
-                g.external_score as score,
-                c.username as username
-            FROM 
-                nums_Game g
-            LEFT JOIN 
-                controller_controllers c ON g.external_owner = c.id
-            WHERE 
-                g.external_tournament_id = '\(tournamentId)'
-            ORDER BY 
-                g.external_score DESC
+            SELECT t.token_id, c.username, g.score, g.reward, tb.account_address
+            FROM tokens AS t
+            JOIN token_balances AS tb ON tb.token_id = t.id
+            JOIN token_attributes AS ta ON ta.token_id = t.id
+            JOIN controllers AS c ON c.address = tb.account_address
+            JOIN "NUMS-Game" AS g ON lower(substr(t.token_id, -16)) = lower(substr(g.id, -16))
+            WHERE t.contract_address = '\(Constants.numsAddress)'
+                AND tb.balance != '0x0000000000000000000000000000000000000000000000000000000000000000'
+                AND ta.trait_name = 'Minted By'
+                AND ta.trait_value = '\(Constants.gameAddress)'
+                AND g.tournament_id = \(tournamentId)
+            LIMIT 1000
             """
             
             let rows = try client.sql(query: query)
@@ -372,11 +371,12 @@ class DojoManager: ObservableObject {
                 var owner: String?
                 var tokenId: String?
                 var score: UInt32 = 0
+                var reward: UInt32 = 0
                 var username: String?
                 
                 for field in row.fields {
                     switch field.name {
-                    case "owner":
+                    case "account_address":
                         if case .text(let value) = field.value {
                             owner = value
                         }
@@ -388,6 +388,10 @@ class DojoManager: ObservableObject {
                         if case .integer(let value) = field.value {
                             score = UInt32(value)
                         }
+                    case "reward":
+                        if case .integer(let value) = field.value {
+                            reward = UInt32(value)
+                        }
                     case "username":
                         if case .text(let value) = field.value {
                             username = value
@@ -398,11 +402,11 @@ class DojoManager: ObservableObject {
                 }
                 
                 if let owner = owner, let tokenId = tokenId {
-                    let gameData = GameData(tokenId: tokenId, score: score)
+                    let gameData = GameData(tokenId: tokenId, score: score, reward: reward)
                     playerGames[owner, default: []].append(gameData)
                     
                     // Cache username for this player
-                    if username != nil {
+                    if let username = username {
                         usernameCache[owner] = username
                     }
                 }
@@ -415,7 +419,7 @@ class DojoManager: ObservableObject {
                 let player = PlayerLeaderboard(
                     id: address,
                     address: address,
-                    username: usernameCache[address],
+                    username: usernameCache[address] ?? nil,
                     gameCount: games.count,
                     games: games.map { Game(
                         id: $0.tokenId,
@@ -454,7 +458,7 @@ class DojoManager: ObservableObject {
         }
     }
     
-    private var usernameCache: [String: String?] = [:]
+    private var usernameCache: [String: String] = [:]
     
     private func startLeaderboardPolling(tournamentId: Int) {
         // Cancel existing timer
@@ -1530,12 +1534,8 @@ class DojoManager: ObservableObject {
         do {
             // Build clause to match the specific game entity
             // NUMS-Game entity has keys: [game_id]
-            let keyClause = HashedKeysClause(
-                modelId: "NUMS-Game",
-                keys: [gameId]
-            )
-            
-            let clause = Clause.hashedKeys(keyClause)
+            // Use hashedKeys with the game ID as the key
+            let clause = Clause.hashedKeys(keys: [gameId])
             
             // Subscribe with callback
             let callback = EntityCallback { [weak self] entity in
@@ -1544,7 +1544,7 @@ class DojoManager: ObservableObject {
                 print("🎮 Game entity update received for game #\(gameId)")
                 
                 // Parse the updated entity into GameModel
-                if let updatedModel = self.parseGameModel(from: entity) {
+                if let updatedModel = self.parseGameModel(from: entity, gameId: gameId) {
                     Task { @MainActor in
                         // Update the game model in our dictionary
                         self.gameModels[updatedModel.id] = updatedModel
@@ -1568,22 +1568,12 @@ class DojoManager: ObservableObject {
     }
     
     func unsubscribeFromGame(_ gameId: String) async {
-        guard let client = toriiClient else {
-            print("⚠️ Torii client not initialized")
-            return
-        }
-        
-        guard let subscriptionId = gameSubscriptions[gameId] else {
-            print("ℹ️ No active subscription for game \(gameId)")
-            return
-        }
-        
-        do {
-            try client.unsubscribe(subscriptionId: subscriptionId)
+        // Note: ToriiClient doesn't have an unsubscribe method yet
+        // Subscriptions will remain active for now
+        // Remove from tracking to prevent duplicate subscriptions
+        if gameSubscriptions[gameId] != nil {
             gameSubscriptions.removeValue(forKey: gameId)
-            print("✅ Unsubscribed from game #\(gameId)")
-        } catch {
-            print("❌ Failed to unsubscribe from game: \(error.localizedDescription)")
+            print("ℹ️ Removed game #\(gameId) from subscription tracking")
         }
     }
     
