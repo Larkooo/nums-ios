@@ -63,23 +63,23 @@ struct GameView: View {
                 
                 // Current Number Display
                 ZStack {
-                    // Continuously pulsating glow effect
+                    // Continuously pulsating glow effect (subtle)
                     if currentNumber > 0 || isSpinning {
                         Circle()
                             .fill(
                                 RadialGradient(
                                     colors: [
-                                        Color.purple.opacity(0.5 * glowPulse),
-                                        Color.purple.opacity(0.25 * glowPulse),
+                                        Color.purple.opacity(0.15 * glowPulse),
+                                        Color.purple.opacity(0.08 * glowPulse),
                                         Color.clear
                                     ],
                                     center: .center,
                                     startRadius: 0,
-                                    endRadius: 80
+                                    endRadius: 50
                                 )
                             )
-                            .frame(width: 160, height: 160)
-                            .scaleEffect(0.8 + (0.4 * glowPulse))
+                            .frame(width: 100, height: 100)
+                            .scaleEffect(0.9 + (0.1 * glowPulse))
                     }
                     
                     VStack(spacing: 6) {
