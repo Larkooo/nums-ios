@@ -153,7 +153,7 @@ struct GameModel: Identifiable, Equatable {
     
     private func unpackSlotValues(from hexString: String, slotCount: Int) -> [UInt16] {
         // Remove "0x" prefix if present
-        var hex = hexString.hasPrefix("0x") ? String(hexString.dropFirst(2)) : hexString
+        let hex = hexString.hasPrefix("0x") ? String(hexString.dropFirst(2)) : hexString
         
         // Handle empty or zero slots
         if hex.isEmpty || hex.trimmingCharacters(in: CharacterSet(charactersIn: "0")) == "" {
@@ -163,17 +163,6 @@ struct GameModel: Identifiable, Equatable {
         
         print("   🔢 Unpacking slots: hex=\(hex)")
         
-        // Reverse byte order (little-endian to big-endian)
-        // Break into byte pairs and reverse
-        var bytes: [String] = []
-        for i in stride(from: 0, to: hex.count, by: 2) {
-            let start = hex.index(hex.startIndex, offsetBy: i)
-            let end = hex.index(start, offsetBy: min(2, hex.count - i))
-            bytes.append(String(hex[start..<end]))
-        }
-        hex = bytes.reversed().joined()
-        print("   🔄 Reversed (little-endian): \(hex)")
-        
         // Convert hex string to BInt
         guard var packed = BInt(hex, radix: 16) else {
             print("⚠️ Failed to parse slots hex: \(hexString)")
@@ -182,22 +171,23 @@ struct GameModel: Identifiable, Equatable {
         
         print("   📦 Packed value (decimal): \(packed)")
         
-        // Use variable-length packing with SLOT_SIZE = 1000 as modulo
-        // packed = slot[0] + slot[1]*1000 + slot[2]*1000^2 + ...
-        let slotSize = BInt(1000)
-        print("   🔧 Using variable-length packing with SLOT_SIZE=1000")
+        // Use 12-bit packing (matches JavaScript implementation)
+        // Each slot is 12 bits (0-4095, covering 0-999)
+        let slotSize = 12
+        let mask = BInt((1 << slotSize) - 1) // 0xFFF = 4095
+        print("   🔧 Using 12-bit packing (SLOT_SIZE=12)")
         
         var values: [UInt16] = []
         
-        print("   📋 Extracting slot values (index 0 → 19):")
+        print("   📋 Extracting slot values (slot 1 → 20):")
         
-        // Extract each slot using modulo and division
-        // slot[0] is extracted first, slot[19] last
+        // Extract each slot using bit-shift and mask
+        // slot[0] at LSB, slot[19] higher up
         for index in 0..<slotCount {
-            // Extract current value: packed % slotSize
-            let value = packed % slotSize
+            // Extract lower 12 bits
+            let value = packed & mask
             
-            if let intValue = value.asInt(), intValue >= 0 && intValue <= 999 {
+            if let intValue = value.asInt(), intValue >= 0 && intValue <= 4095 {
                 let slotValue = UInt16(intValue)
                 values.append(slotValue)
                 if slotValue > 0 {
@@ -207,8 +197,8 @@ struct GameModel: Identifiable, Equatable {
                 values.append(0)
             }
             
-            // Shift to next value: packed / slotSize
-            packed = packed / slotSize
+            // Shift right by 12 bits to get next slot
+            packed = packed >> slotSize
             
             // Early exit if packed becomes 0 (no more data)
             if packed == 0 {
