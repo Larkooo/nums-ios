@@ -48,3 +48,4 @@ nums/
 1. Clone the repository
 2. Open `nums.xcodeproj` in Xcode
 3. Build and run on simulator or device
+

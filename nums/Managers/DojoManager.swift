@@ -98,34 +98,45 @@ struct GameModel: Identifiable {
     
     // Computed property to extract set slots from the felt252 encoded slots
     var setSlots: Set<Int> {
-        // Parse the base64-encoded slots data
-        // For now, we'll return empty and implement parsing later
-        // The slots field is a felt252 (base64) that encodes which slots are set
-        return parseSlots(from: slots)
+        // Unpack the felt252 hex string using the Packer algorithm
+        return unpackSlots(from: slots, slotCount: Int(slotCount), slotMax: Int(slotMax))
     }
     
-    private func parseSlots(from felt252: String) -> Set<Int> {
-        // Decode base64 to bytes
-        guard let data = Data(base64Encoded: felt252) else {
+    private func unpackSlots(from hexString: String, slotCount: Int, slotMax: Int) -> Set<Int> {
+        // Remove "0x" prefix if present
+        let hex = hexString.hasPrefix("0x") ? String(hexString.dropFirst(2)) : hexString
+        
+        // Convert hex string to BInt (big integer)
+        guard var packed = BInt(hex, radix: 16) else {
+            print("⚠️ Failed to parse slots hex: \(hexString)")
             return []
         }
         
-        // The slots are stored as a bitfield
-        // Each bit represents whether a slot is set (1) or not (0)
-        var setSlots: Set<Int> = []
+        // SLOT_SIZE is the modulo value (slotMax + 1 to include 0)
+        let slotSize = BInt(slotMax + 1)
+        var result: Set<Int> = []
         
-        for (byteIndex, byte) in data.enumerated() {
-            for bitIndex in 0..<8 {
-                if (byte & (1 << bitIndex)) != 0 {
-                    let slotNumber = byteIndex * 8 + bitIndex + 1
-                    if slotNumber <= slotCount {
-                        setSlots.insert(slotNumber)
-                    }
-                }
+        // Unpack algorithm: extract slotCount values
+        for index in 0..<slotCount {
+            // Extract current value: packed % slotSize
+            let value = packed % slotSize
+            
+            // Convert to Int and check if slot is set (non-zero)
+            if let intValue = value.asInt(), intValue > 0 {
+                // Slot positions are 1-based (1-20)
+                result.insert(index + 1)
+            }
+            
+            // Shift to next value: packed / slotSize
+            packed = packed / slotSize
+            
+            // Early exit if packed becomes 0 (no more data)
+            if packed == 0 {
+                break
             }
         }
         
-        return setSlots
+        return result
     }
 }
 

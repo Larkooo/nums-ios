@@ -123,3 +123,4 @@ struct AccountConnectedCard: View {
         .environmentObject(SessionManager())
 }
 
+
