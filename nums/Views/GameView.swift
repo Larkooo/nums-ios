@@ -278,33 +278,89 @@ struct GameView: View {
                         dismissGameOver()
                     }
                 
-                VStack(spacing: 24) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 100, weight: .bold))
+                VStack(spacing: 32) {
+                    // Game Over Title
+                    Text("GAME OVER")
+                        .font(.system(size: 36, weight: .black, design: .rounded))
                         .foregroundColor(.red)
-                        .shadow(color: .red.opacity(0.5), radius: 20, x: 0, y: 0)
-                    
-                    Text("GAME OVER!")
-                        .font(.system(size: 48, weight: .black, design: .rounded))
-                        .foregroundColor(.white)
+                        .tracking(2)
                         .shadow(color: .red.opacity(0.5), radius: 10, x: 0, y: 0)
                     
-                    Text("No valid placement for \(currentNumber)")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.9))
-                    
-                    VStack(spacing: 12) {
-                        Text("Final Score")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white.opacity(0.7))
+                    // Score Card (scaled up version of bottom card)
+                    HStack(spacing: 0) {
+                        // Final Score
+                        VStack(alignment: .center, spacing: 8) {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 32))
+                                .foregroundColor(.purple.opacity(0.8))
+                            Text("FINAL SCORE")
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundColor(.white.opacity(0.5))
+                                .tracking(1)
+                            Text("\(score)")
+                                .font(.system(size: 48, weight: .black, design: .rounded))
+                                .foregroundColor(.white)
+                                .shadow(color: .purple.opacity(0.3), radius: 5, x: 0, y: 3)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.5)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
                         
-                        Text("\(score)")
-                            .font(.system(size: 56, weight: .black, design: .rounded))
-                            .foregroundColor(.white)
-                            .shadow(color: .purple.opacity(0.6), radius: 10, x: 0, y: 3)
+                        Divider()
+                            .frame(width: 2, height: 100)
+                            .background(
+                                LinearGradient(
+                                    colors: [.white.opacity(0.1), .white.opacity(0.3), .white.opacity(0.1)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                        
+                        // Reward
+                        VStack(alignment: .center, spacing: 8) {
+                            Image(systemName: "trophy.fill")
+                                .font(.system(size: 32))
+                                .foregroundColor(.yellow.opacity(0.9))
+                            Text("REWARD")
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundColor(.white.opacity(0.5))
+                                .tracking(1)
+                            Text("\(reward)")
+                                .font(.system(size: 48, weight: .black, design: .rounded))
+                                .foregroundColor(.yellow)
+                                .shadow(color: .yellow.opacity(0.3), radius: 5, x: 0, y: 3)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
                     }
-                    .padding(.top, 12)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 28)
+                    .background(
+                        RoundedRectangle(cornerRadius: 24)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.black.opacity(0.5), Color.black.opacity(0.4)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 24)
+                                    .stroke(
+                                        LinearGradient(
+                                            colors: [.white.opacity(0.3), .white.opacity(0.1)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 1.5
+                                    )
+                            )
+                            .shadow(color: .black.opacity(0.4), radius: 20, x: 0, y: 10)
+                    )
+                    .padding(.horizontal, 32)
                     
+                    // Close Button
                     Button(action: {
                         dismissGameOver()
                     }) {
@@ -315,16 +371,18 @@ struct GameView: View {
                             .padding(.vertical, 16)
                             .background(
                                 LinearGradient(
-                                    colors: [Color.red.opacity(0.8), Color.red.opacity(0.6)],
+                                    colors: [Color.white.opacity(0.25), Color.white.opacity(0.15)],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                             )
                             .cornerRadius(16)
-                            .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                            )
                     }
-                    .padding(.horizontal, 40)
-                    .padding(.top, 8)
+                    .padding(.horizontal, 32)
                 }
                 .opacity(gameOverOpacity)
             }
