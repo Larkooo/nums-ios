@@ -27,9 +27,16 @@ struct SessionInfoSheet: View {
     
     var body: some View {
         ZStack {
-            // Background
-            Color(red: 0.349, green: 0.122, blue: 1.0)
-                .ignoresSafeArea()
+            // Purple gradient background (matching GameView and MainView)
+            LinearGradient(
+                colors: [
+                    Color(red: 0.4, green: 0.2, blue: 0.8),
+                    Color(red: 0.3, green: 0.1, blue: 0.6)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // Session Details Card

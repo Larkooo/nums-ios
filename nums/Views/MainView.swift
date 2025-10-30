@@ -344,9 +344,16 @@ struct MainView: View {
     
     private var mainContent: some View {
         ZStack {
-            // Purple background
-            Color(red: 0.349, green: 0.122, blue: 1.0)
-                .ignoresSafeArea()
+            // Purple gradient background (matching GameView)
+            LinearGradient(
+                colors: [
+                    Color(red: 0.4, green: 0.2, blue: 0.8),
+                    Color(red: 0.3, green: 0.1, blue: 0.6)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // Top Bar
@@ -555,7 +562,7 @@ struct MainView: View {
                             HStack(spacing: 8) {
                                 Image(systemName: "clock.fill")
                                     .font(.system(size: 18))
-                                    .foregroundColor(.purple.opacity(0.8))
+                                    .foregroundColor(.cyan.opacity(0.9))
                                     .frame(width: 24)
                                 VStack(alignment: .leading, spacing: 0) {
                                     Text(tournamentDuration)

@@ -31,6 +31,7 @@ struct GameView: View {
     @State private var showGameOverAnimation = false
     @State private var gameOverOpacity: Double = 0.0
     @State private var glowPulse: CGFloat = 1.0
+    @State private var previousNumber: UInt16 = 0 // Track previous number to detect changes
     
     var body: some View {
         ZStack {
@@ -129,6 +130,7 @@ struct GameView: View {
                                 slotValue: optimisticSlotValues[row + 1] ?? (slotValues.indices.contains(row) ? slotValues[row] : 0),
                                 isOptimistic: optimisticSlotValues[row + 1] != nil,
                                 isDisabled: isGameOver || isSettingSlot,
+                                isValidPlacement: isValidPlacement(for: row + 1),
                                 action: {
                                     setSlot(row + 1)
                                 }
@@ -141,6 +143,7 @@ struct GameView: View {
                                 slotValue: optimisticSlotValues[row + 11] ?? (slotValues.indices.contains(row + 10) ? slotValues[row + 10] : 0),
                                 isOptimistic: optimisticSlotValues[row + 11] != nil,
                                 isDisabled: isGameOver || isSettingSlot,
+                                isValidPlacement: isValidPlacement(for: row + 11),
                                 action: {
                                     setSlot(row + 11)
                                 }
@@ -487,6 +490,21 @@ struct GameView: View {
     
     // Helper function to load model data into state
     private func loadModelData(_ model: GameModel) {
+        // Check if we received a new number (different from what we had)
+        let receivedNewNumber = model.number != previousNumber && model.number != currentNumber
+        
+        if receivedNewNumber {
+            // Stop spinning animation when new number arrives
+            withAnimation(.spring()) {
+                isSpinning = false
+            }
+        }
+        
+        // Update previous number before updating current
+        if model.number > 0 {
+            previousNumber = currentNumber
+        }
+        
         withAnimation(.spring()) {
             currentNumber = model.number
         }
@@ -642,7 +660,7 @@ struct GameView: View {
         
         print("✅ Setting slot #\(slotNumber) for game \(gameTokenId) with number \(currentNumber)")
         
-        // Start roulette spinning animation
+        // Start roulette spinning animation - will continue until new number arrives
         startRouletteAnimation()
         
         // Optimistically set the slot value
@@ -657,14 +675,7 @@ struct GameView: View {
                 )
                 
                 // Game state will update automatically via subscription
-                // Stop spinning after a short delay to show the result
-                await MainActor.run {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        withAnimation(.spring()) {
-                            self.isSpinning = false
-                        }
-                    }
-                }
+                // Spinning will stop when loadModelData receives the new number
             } catch {
                 // Show error banner
                 await MainActor.run {
@@ -696,17 +707,15 @@ struct GameView: View {
         }
     }
     
-    // Roulette animation - rapidly cycles through random numbers
+    // Roulette animation - rapidly cycles through random numbers until new number arrives
     private func startRouletteAnimation() {
         isSpinning = true
         spinningNumber = currentNumber
         
-        var count = 0
-        Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { timer in
-            count += 1
-            
-            if count > 20 {
-                // Slow down and stop at current number
+        // Keep cycling through random numbers until isSpinning is set to false by loadModelData
+        Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { timer in
+            if !self.isSpinning {
+                // Stop animation when new number arrives
                 timer.invalidate()
                 self.spinningNumber = self.currentNumber
             } else {
@@ -714,6 +723,72 @@ struct GameView: View {
                 self.spinningNumber = UInt16.random(in: self.slotMin...self.slotMax)
             }
         }
+    }
+    
+    // Check if a slot is a valid placement for the current number
+    private func isValidPlacement(for slotNumber: Int) -> Bool {
+        // If slot is already set, it's not valid
+        if setSlots.contains(slotNumber) {
+            return false
+        }
+        
+        // If no current number, no slots are valid
+        guard currentNumber > 0 else {
+            return false
+        }
+        
+        // If game is over, no slots are valid
+        if isGameOver {
+            return false
+        }
+        
+        // Get all set slot values sorted by slot number
+        var sortedSetSlots: [(slot: Int, value: UInt16)] = []
+        for slotNum in setSlots.sorted() {
+            let index = slotNum - 1
+            if index >= 0 && index < slotValues.count {
+                sortedSetSlots.append((slot: slotNum, value: slotValues[index]))
+            }
+        }
+        
+        // If no slots are set yet, all slots are valid
+        if sortedSetSlots.isEmpty {
+            return true
+        }
+        
+        // Find the position where this slot would fit in the sequence
+        let index = slotNumber - 1
+        guard index >= 0 && index < slotValues.count else {
+            return false
+        }
+        
+        // Find the closest set slots before and after this position
+        var beforeValue: UInt16? = nil
+        var afterValue: UInt16? = nil
+        
+        for (slot, value) in sortedSetSlots {
+            if slot < slotNumber {
+                beforeValue = value
+            } else if slot > slotNumber && afterValue == nil {
+                afterValue = value
+                break
+            }
+        }
+        
+        // Check if current number can fit between the before and after values
+        if let before = beforeValue, let after = afterValue {
+            // Must be between two values
+            return currentNumber > before && currentNumber < after
+        } else if let before = beforeValue {
+            // Must be after the last set value
+            return currentNumber > before
+        } else if let after = afterValue {
+            // Must be before the first set value
+            return currentNumber < after
+        }
+        
+        // If we get here, this slot can accept the number
+        return true
     }
 }
 
@@ -723,6 +798,7 @@ struct SlotButton: View {
     let slotValue: UInt16
     let isOptimistic: Bool
     let isDisabled: Bool
+    let isValidPlacement: Bool
     let action: () -> Void
     
     @State private var pulseAnimation = false
@@ -739,6 +815,11 @@ struct SlotButton: View {
         }
     }
     
+    // Determine if slot should be greyed out (not a valid placement)
+    var isGreyedOut: Bool {
+        !isSet && !isValidPlacement
+    }
+    
     var body: some View {
         Button(action: {
             print("🔘 Slot #\(slotNumber) clicked - isSet: \(isSet), isDisabled: \(isDisabled), slotValue: \(slotValue)")
@@ -747,12 +828,14 @@ struct SlotButton: View {
             HStack(spacing: 8) {
                 Text("\(slotNumber).")
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(isGreyedOut ? .white.opacity(0.25) : .white.opacity(0.5))
                     .frame(width: 28, alignment: .trailing)
                 
                 Text(displayText)
                     .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .foregroundColor(isSet ? .white : .white.opacity(0.4))
+                    .foregroundColor(
+                        isSet ? .white : (isGreyedOut ? .white.opacity(0.2) : .white.opacity(0.4))
+                    )
                     .frame(width: 58)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -768,6 +851,12 @@ struct SlotButton: View {
                             colors: isOptimistic 
                                 ? [Color.yellow.opacity(0.8), Color.orange.opacity(0.6)]
                                 : [Color.green.opacity(0.7), Color.green.opacity(0.5)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    } else if isGreyedOut {
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.08), Color.white.opacity(0.05)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -789,7 +878,9 @@ struct SlotButton: View {
                                 ? (isOptimistic 
                                     ? [Color.yellow.opacity(0.8), Color.orange.opacity(0.4)]
                                     : [Color.green.opacity(0.6), Color.green.opacity(0.3)])
-                                : [Color.white.opacity(0.3), Color.white.opacity(0.1)],
+                                : (isGreyedOut 
+                                    ? [Color.white.opacity(0.1), Color.white.opacity(0.05)]
+                                    : [Color.white.opacity(0.3), Color.white.opacity(0.1)]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
@@ -799,13 +890,13 @@ struct SlotButton: View {
             .shadow(
                 color: isSet 
                     ? (isOptimistic ? Color.orange.opacity(0.5) : Color.green.opacity(0.3))
-                    : Color.black.opacity(0.2), 
+                    : (isGreyedOut ? Color.clear : Color.black.opacity(0.2)), 
                 radius: isSet ? (isOptimistic ? 8 : 5) : 2, 
                 x: 0, 
                 y: 1.5
             )
         }
-        .disabled(isDisabled || (isSet && !isOptimistic))
+        .disabled(isDisabled || (isSet && !isOptimistic) || isGreyedOut)
         .buttonStyle(ScaleButtonStyle())
         .onChange(of: isOptimistic) { newValue in
             if newValue {
