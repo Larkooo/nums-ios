@@ -458,7 +458,8 @@ struct GameView: View {
         // Get all set slot values sorted by slot number
         var sortedSetSlots: [(slot: Int, value: UInt16)] = []
         for slotNum in setSlots.sorted() {
-            if let index = slotNum - 1, index < slotValues.count {
+            let index = slotNum - 1
+            if index >= 0 && index < slotValues.count {
                 sortedSetSlots.append((slot: slotNum, value: slotValues[index]))
             }
         }
