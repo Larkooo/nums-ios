@@ -184,19 +184,25 @@ struct GameModel: Identifiable, Equatable {
         let slotMask = BInt((1 << bitsPerSlot) - 1)
         var result: Set<Int> = []
         
+        // Calculate total bits used
+        let totalBits = slotCount * bitsPerSlot
+        
         // Extract each slot by shifting and masking
-        print("   📋 Extracting slot values:")
+        // Slots are packed from HIGH to LOW: slot 20 at MSB, slot 1 at LSB
+        print("   📋 Extracting slot values (slot 20 → slot 1):")
         for slotIndex in 0..<slotCount {
-            // Calculate bit position for this slot (slot 1 starts at bit 0)
-            let bitShift = slotIndex * bitsPerSlot
+            // Slot 20 is at the highest bits, slot 1 is at the lowest bits
+            // So for slot N (1-20), we want bits at position: totalBits - (21-N)*bitsPerSlot
+            let slotNumber = slotCount - slotIndex // 20, 19, 18, ..., 1
+            let bitShift = totalBits - ((slotIndex + 1) * bitsPerSlot)
             
             // Shift right to bring this slot's bits to the bottom, then mask
             let slotValue = (packed >> bitShift) & slotMask
             
             if let intValue = slotValue.asInt() {
                 if intValue > 0 {
-                    print("      Slot \(slotIndex + 1): value=\(intValue) ✓")
-                    result.insert(slotIndex + 1)
+                    print("      Slot \(slotNumber): value=\(intValue) (hex: \(String(intValue, radix: 16))) ✓")
+                    result.insert(slotNumber)
                 }
             }
         }
