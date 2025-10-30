@@ -283,12 +283,34 @@ struct GameView: View {
     }
     
     private func setSlot(_ slotNumber: Int) {
-        guard !isSettingSlot, !setSlots.contains(slotNumber), !isGameOver else { return }
+        print("🎯 Attempting to set slot #\(slotNumber)")
+        print("   isSettingSlot: \(isSettingSlot)")
+        print("   setSlots contains \(slotNumber): \(setSlots.contains(slotNumber))")
+        print("   setSlots: \(setSlots)")
+        print("   isGameOver: \(isGameOver)")
+        print("   currentNumber: \(currentNumber)")
+        
+        guard !isSettingSlot else {
+            print("❌ Cannot set slot - already setting a slot")
+            return
+        }
+        guard !setSlots.contains(slotNumber) else {
+            print("❌ Cannot set slot - slot \(slotNumber) already set")
+            return
+        }
+        guard !isGameOver else {
+            print("❌ Cannot set slot - game is over")
+            return
+        }
+        guard currentNumber > 0 else {
+            print("❌ Cannot set slot - no current number")
+            return
+        }
         
         isSettingSlot = true
         selectedSlot = slotNumber
         
-        print("🎯 Setting slot #\(slotNumber) for game \(gameTokenId)")
+        print("✅ Setting slot #\(slotNumber) for game \(gameTokenId) with number \(currentNumber)")
         
         Task {
             await dojoManager.setGameSlot(
@@ -323,7 +345,10 @@ struct SlotButton: View {
     }
     
     var body: some View {
-        Button(action: action) {
+        Button(action: {
+            print("🔘 Slot #\(slotNumber) clicked - isSet: \(isSet), isDisabled: \(isDisabled), slotValue: \(slotValue)")
+            action()
+        }) {
             HStack(spacing: 8) {
                 Text("\(slotNumber).")
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
