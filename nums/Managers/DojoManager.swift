@@ -176,48 +176,32 @@ struct GameModel: Identifiable, Equatable {
             print("   🔍 Non-zero bytes at positions: \(nonZeroPositions.joined(separator: ", "))")
         }
         
-        // SLOT_SIZE is the number of possible values per slot (slotMax + 1 to include 0)
-        let slotSize = BInt(slotMax + 1)
+        // Calculate bits needed per slot (minimum to represent slotMax)
+        let bitsPerSlot = Int(ceil(log2(Double(slotMax + 1))))
+        print("   🔧 Using \(bitsPerSlot) bits per slot (for max value \(slotMax))")
+        
+        // Create bitmask for extracting slot values
+        let slotMask = BInt((1 << bitsPerSlot) - 1)
         var result: Set<Int> = []
         
-        // Unpack algorithm: extract slotCount values starting from the HIGHEST index
-        // The packing stores slots from high to low: packed = slot[n-1] + slot[n-2]*size + slot[n-3]*size^2 + ...
-        // So we need to extract from the end backwards
-        var values: [Int] = []
-        var tempPacked = packed
-        
-        // Extract all values first
-        for _ in 0..<slotCount {
-            let value = tempPacked % slotSize
-            if let intValue = value.asInt() {
-                values.append(intValue)
-            } else {
-                values.append(0)
-            }
-            tempPacked = tempPacked / slotSize
-            if tempPacked == 0 && values.count < slotCount {
-                // Fill remaining with zeros
-                while values.count < slotCount {
-                    values.append(0)
+        // Extract each slot by shifting and masking
+        print("   📋 Extracting slot values:")
+        for slotIndex in 0..<slotCount {
+            // Calculate bit position for this slot (slot 1 starts at bit 0)
+            let bitShift = slotIndex * bitsPerSlot
+            
+            // Shift right to bring this slot's bits to the bottom, then mask
+            let slotValue = (packed >> bitShift) & slotMask
+            
+            if let intValue = slotValue.asInt() {
+                if intValue > 0 {
+                    print("      Slot \(slotIndex + 1): value=\(intValue) ✓")
+                    result.insert(slotIndex + 1)
                 }
-                break
             }
         }
         
-        // The values are extracted in order: values[0] = slot 1, values[1] = slot 2, etc.
-        print("   📋 All slot values:")
-        for (index, value) in values.enumerated() {
-            if value > 0 {
-                print("      Slot \(index + 1): \(value) ✓")
-                result.insert(index + 1)
-            } else {
-                print("      Slot \(index + 1): (empty)")
-            }
-        }
-        
-        print("   ✅ Set slots (non-zero): \(result.sorted())")
-        print("   ❓ If this doesn't match your expectation, the on-chain data may contain")
-        print("      pre-generated numbers for all slots, or multiple slots have been set.")
+        print("   ✅ Set slots: \(result.sorted())")
         return result
     }
 }
