@@ -272,7 +272,9 @@ struct GameView: View {
             
             // Game Over Animation Overlay
             if showGameOverAnimation {
-                Color.black.opacity(0.8)
+                // Blurred background
+                Color.black.opacity(0.3)
+                    .background(.ultraThinMaterial)
                     .ignoresSafeArea()
                     .onTapGesture {
                         dismissGameOver()
@@ -395,9 +397,7 @@ struct GameView: View {
             dojoManager.stopLeaderboardPolling()
             
             // Start continuous glow pulsation
-            withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
-                glowPulse = 1.5
-            }
+            startGlowAnimation()
             
             // Check if model already exists in dictionary
             if let existingModel = dojoManager.gameModels[gameTokenId] {
@@ -570,6 +570,15 @@ struct GameView: View {
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             showGameOverAnimation = false
+        }
+    }
+    
+    private func startGlowAnimation() {
+        withAnimation(
+            Animation.easeInOut(duration: 2.0)
+                .repeatForever(autoreverses: true)
+        ) {
+            glowPulse = 1.5
         }
     }
     
