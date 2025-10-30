@@ -448,7 +448,7 @@ struct GameRow: View {
         Task {
             do {
                 // Call the start game function
-                await dojoManager.startGame(
+                try await dojoManager.startGame(
                     gameId: game.tokenId,
                     tournamentId: dojoManager.selectedTournament?.id ?? 0,
                     sessionManager: sessionManager
