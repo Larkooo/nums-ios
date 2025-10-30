@@ -28,6 +28,9 @@ struct GameView: View {
     @State private var isSpinning = false
     @State private var spinningNumber: UInt16 = 0
     @State private var optimisticSlotValues: [Int: UInt16] = [:] // slot number -> value
+    @State private var showGameOverAnimation = false
+    @State private var gameOverScale: CGFloat = 0.5
+    @State private var gameOverOpacity: Double = 0.0
     
     var body: some View {
         ZStack {
@@ -268,6 +271,81 @@ struct GameView: View {
                 }
                 .padding(.top, 60)
             }
+            
+            // Game Over Animation Overlay
+            if showGameOverAnimation {
+                Color.black.opacity(0.8)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        dismissGameOver()
+                    }
+                
+                VStack(spacing: 24) {
+                    // Skull icon or game over symbol
+                    ZStack {
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [Color.red.opacity(0.3), Color.clear],
+                                    center: .center,
+                                    startRadius: 0,
+                                    endRadius: 100
+                                )
+                            )
+                            .frame(width: 200, height: 200)
+                            .scaleEffect(gameOverScale)
+                        
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 100, weight: .bold))
+                            .foregroundColor(.red)
+                            .shadow(color: .red.opacity(0.5), radius: 20, x: 0, y: 0)
+                    }
+                    
+                    Text("GAME OVER!")
+                        .font(.system(size: 48, weight: .black, design: .rounded))
+                        .foregroundColor(.white)
+                        .shadow(color: .red.opacity(0.5), radius: 10, x: 0, y: 0)
+                    
+                    Text("No valid placement for \(currentNumber)")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.9))
+                    
+                    VStack(spacing: 12) {
+                        Text("Final Score")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
+                        
+                        Text("\(score)")
+                            .font(.system(size: 56, weight: .black, design: .rounded))
+                            .foregroundColor(.white)
+                            .shadow(color: .purple.opacity(0.6), radius: 10, x: 0, y: 3)
+                    }
+                    .padding(.top, 12)
+                    
+                    Button(action: {
+                        dismissGameOver()
+                    }) {
+                        Text("Close")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.red.opacity(0.8), Color.red.opacity(0.6)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .cornerRadius(16)
+                            .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                    }
+                    .padding(.horizontal, 40)
+                    .padding(.top, 8)
+                }
+                .scaleEffect(gameOverScale)
+                .opacity(gameOverOpacity)
+            }
         }
         .navigationBarHidden(true)
         .onAppear {
@@ -367,6 +445,85 @@ struct GameView: View {
         
         print("   ✅ UI state updated successfully")
         print("   🎰 Slot values loaded: \(slotValues.enumerated().filter { $0.element > 0 }.map { "Slot \($0.offset + 1)=\($0.element)" })")
+        
+        // Check if game is actually over (no valid placements)
+        checkForGameOver()
+    }
+    
+    // Check if the current number can be placed in any available slot
+    private func checkForGameOver() {
+        // Skip if game is already marked as over or if there's no current number
+        guard !isGameOver, currentNumber > 0, !setSlots.isEmpty else { return }
+        
+        // Get all set slot values sorted by slot number
+        var sortedSetSlots: [(slot: Int, value: UInt16)] = []
+        for slotNum in setSlots.sorted() {
+            if let index = slotNum - 1, index < slotValues.count {
+                sortedSetSlots.append((slot: slotNum, value: slotValues[index]))
+            }
+        }
+        
+        // Check if current number can fit between any two consecutive values
+        var canPlaceNumber = false
+        
+        // Check if number is less than the first set slot (can place before)
+        if let firstSlot = sortedSetSlots.first, currentNumber < firstSlot.value {
+            canPlaceNumber = true
+        }
+        
+        // Check if number is greater than the last set slot (can place after)
+        if let lastSlot = sortedSetSlots.last, currentNumber > lastSlot.value {
+            canPlaceNumber = true
+        }
+        
+        // Check if number fits between any two consecutive set slots
+        for i in 0..<(sortedSetSlots.count - 1) {
+            let current = sortedSetSlots[i].value
+            let next = sortedSetSlots[i + 1].value
+            
+            if currentNumber > current && currentNumber < next {
+                canPlaceNumber = true
+                break
+            }
+        }
+        
+        // If all slots are filled, game is definitely over
+        if setSlots.count >= Int(slotCount) {
+            canPlaceNumber = false
+        }
+        
+        // Trigger game over animation if no valid placement exists
+        if !canPlaceNumber {
+            print("🎮❌ GAME OVER! No valid placement for \(currentNumber)")
+            print("   Set slots: \(sortedSetSlots.map { "Slot \($0.slot)=\($0.value)" })")
+            showGameOverModal()
+        }
+    }
+    
+    private func showGameOverModal() {
+        showGameOverAnimation = true
+        
+        // Animate in
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.6)) {
+            gameOverScale = 1.0
+            gameOverOpacity = 1.0
+        }
+        
+        // Pulse the red glow
+        withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+            gameOverScale = 1.1
+        }
+    }
+    
+    private func dismissGameOver() {
+        withAnimation(.spring()) {
+            gameOverOpacity = 0.0
+            gameOverScale = 0.5
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            showGameOverAnimation = false
+        }
     }
     
     private func setSlot(_ slotNumber: Int) {
