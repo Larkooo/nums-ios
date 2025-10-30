@@ -68,6 +68,10 @@ struct MainView: View {
         dojoManager.selectedTournament?.entryCount ?? 0
     }
     
+    private var powers: Int {
+        dojoManager.selectedTournament?.powers ?? 0
+    }
+    
     private var timeRemaining: String {
         guard let tournament = dojoManager.selectedTournament else {
             return "00:00:00"
@@ -87,6 +91,22 @@ struct MainView: View {
         let seconds = Int(remaining) % 60
         
         return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    }
+    
+    private var tournamentDuration: String {
+        guard let tournament = dojoManager.selectedTournament else {
+            return "00:00:00"
+        }
+        
+        let duration = tournament.endDate.timeIntervalSince(tournament.startDate)
+        let hours = Int(duration) / 3600
+        let days = hours / 24
+        
+        if days > 0 {
+            return "\(days)d \(hours % 24)h"
+        } else {
+            return "\(hours)h"
+        }
     }
     
     // Leaderboard data from DojoManager (shows player leaderboard if available)
@@ -287,32 +307,90 @@ struct MainView: View {
                 
                 // Tournament Info Card
                 VStack(spacing: 12) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("TOURNAMENT #\(tournamentId)")
-                                .font(.system(size: 26, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
-                                .minimumScaleFactor(0.6)
-                                .lineLimit(1)
-                            Text("ACTIVE")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(.green)
+                    VStack(spacing: 12) {
+                        // Tournament Title & Status
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("TOURNAMENT #\(tournamentId)")
+                                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Text("ACTIVE")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.green)
+                            }
+                            
+                            Spacer()
+                            
+                            // Timer Display (fixed width to prevent layout shift)
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text("ENDS IN")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(.white.opacity(0.6))
+                                Text(timeRemaining)
+                                    .font(.system(size: 20, weight: .bold, design: .monospaced))
+                                    .foregroundColor(.white)
+                                    .frame(minWidth: 100, alignment: .trailing)
+                            }
                         }
                         
-                        Spacer()
-                        
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Text("\(entryCount) ENTRIES")
-                                .font(.system(size: 18, weight: .heavy, design: .rounded))
-                                .foregroundColor(.white)
-                            HStack(spacing: 4) {
-                                Text("ENDS IN:")
-                                    .font(.caption)
+                        // Stats Row
+                        HStack(spacing: 16) {
+                            // Entries
+                            HStack(spacing: 6) {
+                                Image(systemName: "person.2.fill")
+                                    .font(.system(size: 14))
                                     .foregroundColor(.purple.opacity(0.8))
-                                Text(timeRemaining)
-                                    .font(.caption)
-                                    .foregroundColor(.purple.opacity(0.8))
+                                VStack(alignment: .leading, spacing: 0) {
+                                    Text("\(entryCount)")
+                                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white)
+                                    Text("ENTRIES")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.6))
+                                }
                             }
+                            
+                            Divider()
+                                .frame(height: 30)
+                                .background(Color.white.opacity(0.2))
+                            
+                            // Duration
+                            HStack(spacing: 6) {
+                                Image(systemName: "clock.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.purple.opacity(0.8))
+                                VStack(alignment: .leading, spacing: 0) {
+                                    Text(tournamentDuration)
+                                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white)
+                                    Text("DURATION")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.6))
+                                }
+                            }
+                            
+                            Divider()
+                                .frame(height: 30)
+                                .background(Color.white.opacity(0.2))
+                            
+                            // Powers
+                            HStack(spacing: 6) {
+                                Image(systemName: "bolt.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.yellow.opacity(0.8))
+                                VStack(alignment: .leading, spacing: 0) {
+                                    Text("\(powers)")
+                                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white)
+                                    Text("POWERS")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.6))
+                                }
+                            }
+                            
+                            Spacer()
                         }
                     }
                     .padding(20)
