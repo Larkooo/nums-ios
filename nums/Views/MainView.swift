@@ -178,12 +178,16 @@ struct MainView: View {
             balanceReady = true // No session, so balance isn't needed
         }
         
-        print("🔍 Checking initial load: leaderboard=\(leaderboardReady), balance=\(balanceReady), isLoading=\(dojoManager.isLoadingLeaderboard)")
+        print("🔍 Checking initial load:")
+        print("   - Leaderboard ready: \(leaderboardReady) (isLoading: \(dojoManager.isLoadingLeaderboard), count: \(dojoManager.arcadeLeaderboard.count))")
+        print("   - Balance ready: \(balanceReady) (isSessionValid: \(isSessionValid), isLoadingBalance: \(dojoManager.isLoadingBalance))")
         
         // Mark as complete when both are ready
         if leaderboardReady && balanceReady {
             print("✅ Initial load complete - showing main content")
             isInitialLoadComplete = true
+        } else {
+            print("⏳ Still waiting for initial load...")
         }
     }
     
@@ -689,6 +693,19 @@ struct MainView: View {
                 currentTime = Date()
             }
             
+            // Check completion after a short delay to ensure state is updated
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                checkInitialLoadComplete()
+            }
+            
+            // Also check every second until complete
+            Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
+                checkInitialLoadComplete()
+                if isInitialLoadComplete {
+                    timer.invalidate()
+                }
+            }
+            
             // Fallback timeout - show main view after 5 seconds even if loading isn't complete
             DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
                 if !isInitialLoadComplete {
@@ -742,6 +759,12 @@ struct MainView: View {
         .onChange(of: dojoManager.isLoadingBalance) { isLoading in
             // Check if we can complete initial load when balance finishes loading
             if !isLoading {
+                checkInitialLoadComplete()
+            }
+        }
+        .onChange(of: dojoManager.arcadeLeaderboard.count) { count in
+            // Check completion when leaderboard data arrives
+            if count > 0 {
                 checkInitialLoadComplete()
             }
         }
