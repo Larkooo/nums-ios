@@ -464,11 +464,11 @@ struct MainView: View {
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 8)
                                 .onAppear {
-                                    // Load more when we're near the end (within last 5 items or 20% of list)
-                                    let triggerPoint = max(leaderboard.count - 5, Int(Double(leaderboard.count) * 0.8))
+                                    // Load more when we're near the end (within last 3 items)
+                                    let triggerPoint = max(0, leaderboard.count - 3)
                                     if let index = leaderboard.firstIndex(where: { $0.id == entry.id }) {
                                         print("🔍 Item appeared: index \(index)/\(leaderboard.count), trigger: \(triggerPoint), hasMore: \(dojoManager.hasMoreLeaderboardEntries)")
-                                        if index >= triggerPoint {
+                                        if index >= triggerPoint && dojoManager.hasMoreLeaderboardEntries {
                                             print("🎯 Trigger point reached!")
                                             loadMoreLeaderboardEntries()
                                         }
@@ -491,7 +491,7 @@ struct MainView: View {
                 }
                 .frame(maxHeight: .infinity)
                 .padding(.horizontal, 16)
-                .padding(.bottom, 20)
+                .padding(.bottom, 12)
                 
                 // Page Navigation (TODO: Implement pagination or infinite scrolling)
                 // HStack(spacing: 12) {
