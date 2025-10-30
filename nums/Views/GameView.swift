@@ -449,7 +449,7 @@ struct GameView: View {
                 
                 if isNewGame {
                     // Start a new game
-                    await dojoManager.startGame(
+                    try? await dojoManager.startGame(
                         gameId: gameTokenId,
                         tournamentId: dojoManager.selectedTournament?.id ?? 1,
                         sessionManager: sessionManager
