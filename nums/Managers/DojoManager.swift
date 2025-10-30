@@ -385,8 +385,8 @@ class DojoManager: ObservableObject {
             let rows = try client.sql(query: query)
             print("📦 SQL returned \(rows.count) rows")
             
-            // Group by player and aggregate
-            var playerGames: [String: [GameData]] = [:]
+            // Build arcade-style leaderboard (one entry per game, no deduplication)
+            var players: [PlayerLeaderboard] = []
             
             for row in rows {
                 var owner: String?
@@ -423,44 +423,35 @@ class DojoManager: ObservableObject {
                 }
                 
                 if let owner = owner, let tokenId = tokenId {
-                    let gameData = GameData(tokenId: tokenId, score: score, reward: reward)
-                    playerGames[owner, default: []].append(gameData)
-                    
                     // Cache username for this player
                     if let username = username {
                         usernameCache[owner] = username
                     }
+                    
+                    // Create one leaderboard entry per game (arcade-style)
+                    let player = PlayerLeaderboard(
+                        id: "\(owner)-\(tokenId)", // Unique ID per game
+                        address: owner,
+                        username: username ?? usernameCache[owner],
+                        gameCount: 1,
+                        totalScore: Int(score), // Individual game score
+                        games: [Game(
+                            id: tokenId,
+                            tokenId: tokenId,
+                            contractAddress: Constants.gameAddress,
+                            balance: "1",
+                            accountAddress: owner
+                        )]
+                    )
+                    players.append(player)
                 }
             }
             
-            // Build player leaderboard
-            var players: [PlayerLeaderboard] = []
-            for (address, games) in playerGames {
-                let totalScore = games.reduce(0) { $0 + Int($1.score) }
-                let player = PlayerLeaderboard(
-                    id: address,
-                    address: address,
-                    username: usernameCache[address] ?? nil,
-                    gameCount: games.count,
-                    totalScore: totalScore,
-                    games: games.map { Game(
-                        id: $0.tokenId,
-                        tokenId: $0.tokenId,
-                        contractAddress: Constants.gameAddress,
-                        balance: "1",
-                        accountAddress: address
-                    )}
-                )
-                players.append(player)
-            }
-            
-            // Sort players by total score (descending)
-            players.sort { $0.totalScore > $1.totalScore }
-            
+            // Already sorted by score DESC in SQL query
             await MainActor.run {
                 self.playerLeaderboard = players
                 self.isLoadingPlayerLeaderboard = false
-                print("✅ SQL Leaderboard loaded: \(players.count) players")
+                print("✅ SQL Leaderboard loaded: \(players.count) entries (arcade-style)")
             }
             
         } catch {

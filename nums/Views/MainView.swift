@@ -344,7 +344,7 @@ struct MainView: View {
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                     
                                     Text("\(entry.score)")
-                                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                                        .font(.system(size: 14, weight: .bold, design: .rounded))
                                         .foregroundColor(entry.isCurrentUser ? .yellow : .white)
                                         .frame(width: 70, alignment: .center)
                                     
