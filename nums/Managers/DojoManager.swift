@@ -91,6 +91,7 @@ struct PlayerLeaderboard: Identifiable {
     let address: String
     let username: String?
     let gameCount: Int
+    let totalScore: Int // Sum of all game scores
     let games: [Game]
 }
 
@@ -441,6 +442,7 @@ class DojoManager: ObservableObject {
                     address: address,
                     username: usernameCache[address] ?? nil,
                     gameCount: games.count,
+                    totalScore: totalScore,
                     games: games.map { Game(
                         id: $0.tokenId,
                         tokenId: $0.tokenId,
@@ -452,12 +454,8 @@ class DojoManager: ObservableObject {
                 players.append(player)
             }
             
-            // Sort players by total score (sum of all their games' scores)
-            players.sort { player1, player2 in
-                let score1 = playerGames[player1.address]?.reduce(0) { $0 + Int($1.score) } ?? 0
-                let score2 = playerGames[player2.address]?.reduce(0) { $0 + Int($1.score) } ?? 0
-                return score1 > score2
-            }
+            // Sort players by total score (descending)
+            players.sort { $0.totalScore > $1.totalScore }
             
             await MainActor.run {
                 self.playerLeaderboard = players
@@ -491,54 +489,6 @@ class DojoManager: ObservableObject {
         print("⏰ Started leaderboard polling (every 3s)")
     }
     
-    // MARK: - Old Leaderboard (deprecated, kept for reference)
-    
-    func fetchLeaderboard(for tournamentId: Int) async {
-        guard let client = toriiClient else {
-            print("⚠️ Torii client not initialized")
-            return
-        }
-        
-        await MainActor.run {
-            self.isLoadingLeaderboard = true
-        }
-        
-        do {
-            print("📊 Fetching leaderboard data for tournament #\(tournamentId)...")
-            
-            // Create query for NUMS-Leaderboard model with tournament_id filter
-            let query = Query(
-                worldAddresses: [],
-                pagination: Pagination(
-                    cursor: nil,
-                    limit: 100,
-                    direction: .forward,
-                    orderBy: []
-                ),
-                clause: nil, // TODO: Add filter for tournament_id if needed
-                noHashedKeys: false,
-                models: ["NUMS-Leaderboard"],
-                historical: false
-            )
-            
-            let pageEntity = try client.entities(query: query)
-            
-            await MainActor.run {
-                // Parse leaderboard data and filter by tournament ID
-                self.leaderboard = pageEntity.items.compactMap { self.parseLeaderboardEntry(from: $0) }
-                    .filter { $0.tournamentId == tournamentId }
-                    .sorted { $0.capacity > $1.capacity } // Sort by capacity descending
-                print("✅ Leaderboard loaded: \(self.leaderboard.count) entries for tournament #\(tournamentId)")
-                self.isLoadingLeaderboard = false
-            }
-        } catch {
-            await MainActor.run {
-                self.errorMessage = "Failed to fetch leaderboard: \(error.localizedDescription)"
-                self.isLoadingLeaderboard = false
-                print("❌ Leaderboard fetch error: \(error)")
-            }
-        }
-    }
     
     func fetchTokenBalance(for accountAddress: String) async {
         // Validate that we have a proper address before fetching
@@ -661,12 +611,12 @@ class DojoManager: ObservableObject {
         }
     }
     
-    func fetchGames(for accountAddress: String) async {
-        // Validate that we have a proper address before fetching
-        guard !accountAddress.isEmpty, accountAddress.hasPrefix("0x") else {
-            print("⚠️ Invalid account address: \(accountAddress)")
-            await MainActor.run {
-                self.games = []
+    // MARK: - Game Model Fetching
+    
+    func fetchGameModel(gameId: String) async -> GameModel? {
+        guard let client = toriiClient else {
+            print("⚠️ Torii client not initialized")
+            return nil
             }
             return
         }

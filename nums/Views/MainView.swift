@@ -99,7 +99,7 @@ struct MainView: View {
                 LeaderboardEntry(
                     rank: index + 1,
                     player: player.username ?? String(player.address.prefix(10)), // Show username or address
-                    score: player.gameCount, // Game count as score
+                    score: player.totalScore, // Total score from all games
                     prize: "-", // No prize for game leaderboard
                     isCurrentUser: player.address.lowercased() == currentAddress
                 )
