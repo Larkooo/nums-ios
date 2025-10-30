@@ -141,79 +141,73 @@ struct GameModel: Identifiable, Equatable {
     
     // Computed property to extract set slots from the felt252 encoded slots
     var setSlots: Set<Int> {
-        // Unpack the felt252 hex string using the Packer algorithm
-        return unpackSlots(from: slots, slotCount: Int(slotCount), slotMax: Int(slotMax))
+        // Unpack the felt252 hex string to get which slots have values
+        let slotValues = unpackSlotValues(from: slots, slotCount: Int(slotCount))
+        return Set(slotValues.enumerated().compactMap { $0.element > 0 ? $0.offset + 1 : nil })
     }
     
-    private func unpackSlots(from hexString: String, slotCount: Int, slotMax: Int) -> Set<Int> {
+    // Computed property to get the actual slot values (0 if not set)
+    var slotValues: [UInt16] {
+        return unpackSlotValues(from: slots, slotCount: Int(slotCount))
+    }
+    
+    private func unpackSlotValues(from hexString: String, slotCount: Int) -> [UInt16] {
         // Remove "0x" prefix if present
         let hex = hexString.hasPrefix("0x") ? String(hexString.dropFirst(2)) : hexString
         
         // Handle empty or zero slots
         if hex.isEmpty || hex.trimmingCharacters(in: CharacterSet(charactersIn: "0")) == "" {
             print("   📭 Slots empty or all zeros")
-            return []
+            return Array(repeating: 0, count: slotCount)
         }
         
-        // Convert hex string to BInt directly (no byte reversal)
+        // Convert hex string to BInt directly
         guard var packed = BInt(hex, radix: 16) else {
             print("⚠️ Failed to parse slots hex: \(hexString)")
-            return []
+            return Array(repeating: 0, count: slotCount)
         }
         
         print("   🔢 Unpacking slots: hex=\(hex)")
         print("   📦 Packed value (decimal): \(packed)")
         
-        // Debug: show where the non-zero bytes are in the hex
-        var hexBytes: [String] = []
-        for i in stride(from: 0, to: hex.count, by: 2) {
-            let start = hex.index(hex.startIndex, offsetBy: i)
-            let end = hex.index(start, offsetBy: min(2, hex.count - i))
-            hexBytes.append(String(hex[start..<end]))
-        }
-        let nonZeroPositions = hexBytes.enumerated().compactMap { $0.element != "00" ? "\($0.offset):\($0.element)" : nil }
-        if !nonZeroPositions.isEmpty {
-            print("   🔍 Non-zero bytes at positions: \(nonZeroPositions.joined(separator: ", "))")
-        }
+        // Each slot is a u16 (16 bits)
+        let bitsPerSlot = 16
+        print("   🔧 Using \(bitsPerSlot) bits per slot (u16)")
         
-        // Calculate bits needed per slot (minimum to represent slotMax)
-        let bitsPerSlot = Int(ceil(log2(Double(slotMax + 1))))
-        print("   🔧 Using \(bitsPerSlot) bits per slot (for max value \(slotMax))")
-        
-        // Create bitmask for extracting slot values
+        // Create bitmask for u16
         let slotMask = BInt((1 << bitsPerSlot) - 1)
-        var result: Set<Int> = []
+        var values: [UInt16] = []
         
-        // Calculate total bits in the hex (felt252 = 252 bits, but often padded to 256 for display)
+        // Calculate total bits in the hex
         let hexBits = hex.count * 4 // Each hex digit is 4 bits
-        let slotsBits = slotCount * bitsPerSlot // Total bits for all slots
         
-        print("   📏 Hex bits: \(hexBits), Slots need: \(slotsBits) bits")
+        print("   📏 Hex bits: \(hexBits), Slots need: \(slotCount * bitsPerSlot) bits")
+        print("   📋 Extracting slot values (slot 20 → slot 1):")
         
         // Extract each slot by shifting and masking
         // Slots are packed from HIGH to LOW: slot 20 at MSB, slot 1 at LSB
-        // Slots start from the MSB of the felt252
-        print("   📋 Extracting slot values (slot 20 → slot 1):")
         for slotIndex in 0..<slotCount {
             let slotNumber = slotCount - slotIndex // 20, 19, 18, ..., 1
             
-            // Slot 20 is at the top bits, slot 1 is lower
             // Calculate bit position from the RIGHT (LSB = bit 0)
             let bitShift = (hexBits - (slotIndex + 1) * bitsPerSlot)
             
             // Shift right to bring this slot's bits to the bottom, then mask
             let slotValue = (packed >> bitShift) & slotMask
             
-            if let intValue = slotValue.asInt() {
-                if intValue > 0 {
-                    print("      Slot \(slotNumber): value=\(intValue) (0x\(String(intValue, radix: 16))) at bits \(bitShift)-\(bitShift+bitsPerSlot-1) ✓")
-                    result.insert(slotNumber)
+            if let intValue = slotValue.asInt(), intValue >= 0 && intValue <= 65535 {
+                let value = UInt16(intValue)
+                values.append(value)
+                if value > 0 {
+                    print("      Slot \(slotNumber): \(value) ✓")
                 }
+            } else {
+                values.append(0)
             }
         }
         
-        print("   ✅ Set slots: \(result.sorted())")
-        return result
+        print("   ✅ Extracted \(values.count) slot values")
+        return values
     }
 }
 

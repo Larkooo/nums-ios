@@ -20,6 +20,7 @@ struct GameView: View {
     @State private var slotCount: UInt8 = 20
     @State private var isGameOver = false
     @State private var setSlots: Set<Int> = []
+    @State private var slotValues: [UInt16] = []
     @State private var isSettingSlot = false
     @State private var selectedSlot: Int? = nil
     
@@ -84,7 +85,7 @@ struct GameView: View {
                             // Left column
                             SlotButton(
                                 slotNumber: row + 1,
-                                isSet: setSlots.contains(row + 1),
+                                slotValue: slotValues.indices.contains(row) ? slotValues[row] : 0,
                                 isDisabled: isGameOver || isSettingSlot,
                                 action: {
                                     setSlot(row + 1)
@@ -95,7 +96,7 @@ struct GameView: View {
                             // Right column
                             SlotButton(
                                 slotNumber: row + 11,
-                                isSet: setSlots.contains(row + 11),
+                                slotValue: slotValues.indices.contains(row + 10) ? slotValues[row + 10] : 0,
                                 isDisabled: isGameOver || isSettingSlot,
                                 action: {
                                     setSlot(row + 11)
@@ -214,6 +215,7 @@ struct GameView: View {
         slotCount = model.slotCount
         isGameOver = model.over
         setSlots = model.setSlots
+        slotValues = model.slotValues
         
         // Clear loading state if we were setting a slot
         if isSettingSlot {
@@ -222,6 +224,7 @@ struct GameView: View {
         }
         
         print("   ✅ UI state updated successfully")
+        print("   🎰 Slot values loaded: \(slotValues.enumerated().filter { $0.element > 0 }.map { "Slot \($0.offset + 1)=\($0.element)" })")
     }
     
     private func setSlot(_ slotNumber: Int) {
@@ -248,9 +251,21 @@ struct GameView: View {
 // Slot Button Component
 struct SlotButton: View {
     let slotNumber: Int
-    let isSet: Bool
+    let slotValue: UInt16
     let isDisabled: Bool
     let action: () -> Void
+    
+    var isSet: Bool {
+        slotValue > 0
+    }
+    
+    var displayText: String {
+        if slotValue > 0 {
+            return "\(slotValue)"
+        } else {
+            return "?"
+        }
+    }
     
     var body: some View {
         Button(action: action) {
@@ -260,7 +275,7 @@ struct SlotButton: View {
                     .foregroundColor(.white.opacity(0.6))
                     .frame(width: 35, alignment: .trailing)
                 
-                Text(isSet ? "✓" : "Set")
+                Text(displayText)
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .frame(width: 70)
