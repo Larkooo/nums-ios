@@ -162,7 +162,19 @@ struct GameModel: Identifiable, Equatable {
         }
         
         print("   🔢 Unpacking slots: hex=\(hex)")
-        print("   📦 Packed value: \(packed)")
+        print("   📦 Packed value (decimal): \(packed)")
+        
+        // Debug: show where the non-zero bytes are in the hex
+        var hexBytes: [String] = []
+        for i in stride(from: 0, to: hex.count, by: 2) {
+            let start = hex.index(hex.startIndex, offsetBy: i)
+            let end = hex.index(start, offsetBy: min(2, hex.count - i))
+            hexBytes.append(String(hex[start..<end]))
+        }
+        let nonZeroPositions = hexBytes.enumerated().compactMap { $0.element != "00" ? "\($0.offset):\($0.element)" : nil }
+        if !nonZeroPositions.isEmpty {
+            print("   🔍 Non-zero bytes at positions: \(nonZeroPositions.joined(separator: ", "))")
+        }
         
         // SLOT_SIZE is the number of possible values per slot (slotMax + 1 to include 0)
         let slotSize = BInt(slotMax + 1)
@@ -192,16 +204,20 @@ struct GameModel: Identifiable, Equatable {
             }
         }
         
-        // The values are in reverse order (slot 1 is first, slot 20 is last)
-        // So we check from the beginning
+        // The values are extracted in order: values[0] = slot 1, values[1] = slot 2, etc.
+        print("   📋 All slot values:")
         for (index, value) in values.enumerated() {
             if value > 0 {
-                print("      Slot \(index + 1): value=\(value) ✓")
+                print("      Slot \(index + 1): \(value) ✓")
                 result.insert(index + 1)
+            } else {
+                print("      Slot \(index + 1): (empty)")
             }
         }
         
-        print("   ✅ Set slots: \(result.sorted())")
+        print("   ✅ Set slots (non-zero): \(result.sorted())")
+        print("   ❓ If this doesn't match your expectation, the on-chain data may contain")
+        print("      pre-generated numbers for all slots, or multiple slots have been set.")
         return result
     }
 }
