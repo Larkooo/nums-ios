@@ -262,16 +262,22 @@ struct MainView: View {
                                     ProgressView()
                                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                 } else {
-                                    Image(systemName: "person.crop.circle.badge.plus")
-                                        .font(.system(size: 18))
+                                    Image("controller-icon")
+                                        .resizable()
+                                        .renderingMode(.template)
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 18, height: 18)
+                                        .foregroundColor(.white)
                                     Text("Connect")
                                         .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
                                 }
                             }
-                            .foregroundColor(.white)
                             .padding(.horizontal, 14)
                             .frame(height: 50)
-                            .background(Color.green.opacity(0.8))
+                            .background(Color.white.opacity(0.1))
                             .cornerRadius(12)
                         }
                         .disabled(sessionManager.isLoading)

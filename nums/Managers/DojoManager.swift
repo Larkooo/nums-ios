@@ -1099,7 +1099,7 @@ class DojoManager: ObservableObject {
         await sessionManager.executeTransaction(
             contractAddress: Constants.gameAddress,
             entrypoint: "start",
-            calldata: [gameIdFelt, tournamentIdFelt]
+            calldata: [gameIdFelt]
         )
     }
     
@@ -1186,7 +1186,7 @@ class DojoManager: ObservableObject {
             let startCall = Call(
                 contractAddress: Constants.gameAddress,
                 entrypoint: "start",
-                calldata: [gameIdFelt, tournamentIdFelt]
+                calldata: [gameIdFelt]
             )
             
             print("   🎲 Starting game with random number...")
