@@ -446,13 +446,20 @@ struct GameView: View {
         print("   ✅ UI state updated successfully")
         print("   🎰 Slot values loaded: \(slotValues.enumerated().filter { $0.element > 0 }.map { "Slot \($0.offset + 1)=\($0.element)" })")
         
-        // Check if game is actually over (no valid placements)
+        // Check if game is already over from blockchain or calculate if over
         checkForGameOver()
     }
     
     // Check if the current number can be placed in any available slot
     private func checkForGameOver() {
-        // Skip if game is already marked as over or if there's no current number
+        // If game is already marked as over from blockchain, show modal
+        if isGameOver && currentNumber > 0 && !showGameOverAnimation {
+            print("🎮❌ Game is marked as OVER from blockchain")
+            showGameOverModal()
+            return
+        }
+        
+        // Skip further checks if already over or no current number
         guard !isGameOver, currentNumber > 0, !setSlots.isEmpty else { return }
         
         // Get all set slot values sorted by slot number
