@@ -902,7 +902,14 @@ class DojoManager: ObservableObject {
         do {
             print("🎮 Fetching game model for game #\(gameId)...")
             
-            // Create query for NUMS-Game model with game ID filter
+            // Create query with KeysClause to fetch specific game
+            let keysClause = KeysClause(
+                keys: [gameId],
+                patternMatching: .variableLen,
+                models: ["NUMS-Game"]
+            )
+            let clause = Clause.keys(clause: keysClause)
+            
             let query = Query(
                 worldAddresses: [],
                 pagination: Pagination(
@@ -911,7 +918,7 @@ class DojoManager: ObservableObject {
                     direction: .forward,
                     orderBy: []
                 ),
-                clause: nil, // TODO: Add filter for game ID if needed
+                clause: clause,
                 noHashedKeys: false,
                 models: ["NUMS-Game"],
                 historical: false
@@ -919,10 +926,18 @@ class DojoManager: ObservableObject {
             
             let pageEntity = try client.entities(query: query)
             
-            // Parse and find the game with matching ID
-            for entity in pageEntity.items {
+            // Parse the game model
+            if let entity = pageEntity.items.first {
                 if let parsedGame = parseGameModel(from: entity, gameId: gameId) {
                     print("✅ Game model loaded for #\(gameId)")
+                    print("   Score: \(parsedGame.score), Number: \(parsedGame.number), Next: \(parsedGame.nextNumber)")
+                    print("   Set slots: \(parsedGame.setSlots)")
+                    
+                    // Store in gameModels dictionary so onChange triggers
+                    await MainActor.run {
+                        self.gameModels[parsedGame.id] = parsedGame
+                    }
+                    
                     return parsedGame
                 }
             }

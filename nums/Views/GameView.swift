@@ -146,20 +146,32 @@ struct GameView: View {
         }
         .navigationBarHidden(true)
         .onAppear {
-            // Subscribe to this specific game
-            Task {
-                await dojoManager.subscribeToGame(gameTokenId)
-            }
-            
-            if isNewGame {
-                startNewGame()
-            } else {
-                loadGame()
-            }
+            print("🎮 GameView appeared for token: \(gameTokenId), isNewGame: \(isNewGame)")
             
             // Start timer for countdown
             Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
                 currentTime = Date()
+            }
+            
+            // Subscribe and load game
+            Task {
+                // Subscribe to this specific game for real-time updates
+                await dojoManager.subscribeToGame(gameTokenId)
+                
+                if isNewGame {
+                    // Start a new game
+                    await dojoManager.startGame(
+                        gameId: gameTokenId,
+                        tournamentId: dojoManager.selectedTournament?.id ?? 1,
+                        sessionManager: sessionManager
+                    )
+                    
+                    // Wait a moment for blockchain state to update
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                }
+                
+                // Load the current game state (works for both new and existing games)
+                _ = await dojoManager.fetchGameModel(gameId: gameTokenId)
             }
         }
         .onDisappear {
@@ -169,8 +181,12 @@ struct GameView: View {
             }
         }
         .onChange(of: dojoManager.gameModels[gameTokenId]) { newModel in
-            // Update UI when game model changes via subscription
+            // Update UI when game model changes via subscription or fetch
+            print("🔄 GameView onChange triggered for \(gameTokenId)")
             if let model = newModel {
+                print("   📊 Updating UI - Score: \(model.score), Number: \(model.number), Next: \(model.nextNumber)")
+                print("   🎰 Set slots: \(model.setSlots)")
+                
                 currentNumber = model.number
                 nextNumber = model.nextNumber
                 gameLevel = model.level
@@ -188,6 +204,8 @@ struct GameView: View {
                     isSettingSlot = false
                     selectedSlot = nil
                 }
+            } else {
+                print("   ⚠️ Model is nil")
             }
         }
     }
@@ -198,6 +216,8 @@ struct GameView: View {
         isSettingSlot = true
         selectedSlot = slotNumber
         
+        print("🎯 Setting slot #\(slotNumber) for game \(gameTokenId)")
+        
         Task {
             await dojoManager.setGameSlot(
                 gameId: gameTokenId,
@@ -207,41 +227,6 @@ struct GameView: View {
             
             // Game state will update automatically via subscription
             // No need to manually reload
-        }
-    }
-    
-    private func startNewGame() {
-        Task {
-            await dojoManager.startGame(
-                gameId: gameTokenId,
-                tournamentId: dojoManager.selectedTournament?.id ?? 1,
-                sessionManager: sessionManager
-            )
-            
-            // Game state will update automatically via subscription
-            // Initial load happens after a few seconds
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            await loadGame() // One-time load to get initial state
-        }
-    }
-    
-    private func loadGame() {
-        Task {
-            if let gameModel = await dojoManager.fetchGameModel(gameId: gameTokenId) {
-                await MainActor.run {
-                    self.currentNumber = gameModel.number
-                    self.nextNumber = gameModel.nextNumber
-                    self.gameLevel = gameModel.level
-                    self.powers = gameModel.powers
-                    self.score = gameModel.score
-                    self.reward = gameModel.reward
-                    self.slotMin = gameModel.slotMin
-                    self.slotMax = gameModel.slotMax
-                    self.slotCount = gameModel.slotCount
-                    self.isGameOver = gameModel.over
-                    self.setSlots = gameModel.setSlots
-                }
-            }
         }
     }
 }
