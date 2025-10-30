@@ -366,6 +366,11 @@ class DojoManager: ObservableObject {
             let offset = reset ? 0 : self.leaderboardOffset
             let canLoad = !self.isLoadingLeaderboard && !self.isLoadingMoreLeaderboard && (reset || self.hasMoreLeaderboardEntries)
             let isInitial = self.arcadeLeaderboard.isEmpty
+            
+            if !canLoad {
+                print("❌ Cannot load: isLoading=\(self.isLoadingLeaderboard), isLoadingMore=\(self.isLoadingMoreLeaderboard), hasMore=\(self.hasMoreLeaderboardEntries), reset=\(reset)")
+            }
+            
             return (canLoad, offset, isInitial)
         }
         
@@ -466,17 +471,20 @@ class DojoManager: ObservableObject {
                     self.arcadeLeaderboard = entries
                     self.leaderboardOffset = entries.count
                     self.hasMoreLeaderboardEntries = entries.count >= self.leaderboardPageSize
-                    print("✅ SQL Leaderboard refreshed: \(entries.count) entries")
+                    print("✅ SQL Leaderboard refreshed: \(entries.count) entries, hasMore: \(self.hasMoreLeaderboardEntries)")
                 } else {
                     // Append new entries (pagination)
+                    let oldCount = self.arcadeLeaderboard.count
                     self.arcadeLeaderboard.append(contentsOf: entries)
                     self.leaderboardOffset += entries.count
                     
                     // If we got fewer entries than page size, no more to load
                     if entries.count < self.leaderboardPageSize {
                         self.hasMoreLeaderboardEntries = false
+                        print("✅ SQL Leaderboard loaded more: \(entries.count) new entries (total: \(self.arcadeLeaderboard.count)) - NO MORE TO LOAD")
+                    } else {
+                        print("✅ SQL Leaderboard loaded more: \(entries.count) new entries (total: \(self.arcadeLeaderboard.count)) - hasMore: \(self.hasMoreLeaderboardEntries)")
                     }
-                    print("✅ SQL Leaderboard loaded more: \(entries.count) new entries (total: \(self.arcadeLeaderboard.count))")
                 }
                 
                 self.isLoadingLeaderboard = false

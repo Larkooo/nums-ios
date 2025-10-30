@@ -466,9 +466,12 @@ struct MainView: View {
                                 .onAppear {
                                     // Load more when we're near the end (within last 5 items or 20% of list)
                                     let triggerPoint = max(leaderboard.count - 5, Int(Double(leaderboard.count) * 0.8))
-                                    if let index = leaderboard.firstIndex(where: { $0.id == entry.id }),
-                                       index >= triggerPoint {
-                                        loadMoreLeaderboardEntries()
+                                    if let index = leaderboard.firstIndex(where: { $0.id == entry.id }) {
+                                        print("🔍 Item appeared: index \(index)/\(leaderboard.count), trigger: \(triggerPoint), hasMore: \(dojoManager.hasMoreLeaderboardEntries)")
+                                        if index >= triggerPoint {
+                                            print("🎯 Trigger point reached!")
+                                            loadMoreLeaderboardEntries()
+                                        }
                                     }
                                 }
                             }
