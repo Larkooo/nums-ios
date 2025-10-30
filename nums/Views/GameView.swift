@@ -310,7 +310,7 @@ struct GameView: View {
                         .padding(.vertical, 8)
                         
                         Divider()
-                            .frame(width: 2, height: 85)
+                            .frame(width: 2, height: 20)
                             .background(
                                 LinearGradient(
                                     colors: [.white.opacity(0.1), .white.opacity(0.3), .white.opacity(0.1)],

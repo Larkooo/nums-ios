@@ -52,19 +52,19 @@ struct TournamentSelectorSheet: View {
             }
             .navigationTitle("Select Tournament")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        dismiss()
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.white.opacity(0.6))
-                    }
-                }
-            }
-            .toolbarBackground(Color(red: 0.349, green: 0.122, blue: 1.0), for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            // .toolbar {
+            //     ToolbarItem(placement: .navigationBarTrailing) {
+            //         Button(action: {
+            //             dismiss()
+            //         }) {
+            //             Image(systemName: "xmark.circle.fill")
+            //                 .foregroundColor(.white.opacity(0.6))
+            //         }
+            //     }
+            // }
+            // .toolbarBackground(Color(red: 0.349, green: 0.122, blue: 1.0), for: .navigationBar)
+            // .toolbarBackground(.visible, for: .navigationBar)
+            // .toolbarColorScheme(.dark, for: .navigationBar)
         }
     }
 }
@@ -113,12 +113,6 @@ struct TournamentCard: View {
                 }
                 
                 Spacer()
-                
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.green)
-                }
             }
             .padding(16)
             .background(
