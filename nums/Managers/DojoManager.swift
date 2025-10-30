@@ -372,7 +372,7 @@ class DojoManager: ObservableObject {
             JOIN token_attributes AS ta ON ta.token_id = t.id
             JOIN controllers AS c ON c.address = tb.account_address
             JOIN "NUMS-Game" AS g ON lower(substr(t.token_id, -16)) = lower(substr(g.id, -16))
-            WHERE t.contract_address = '\(Constants.numsAddress)'
+            WHERE t.contract_address = '\(Constants.denshokanAddress)'
                 AND tb.balance != '0x0000000000000000000000000000000000000000000000000000000000000000'
                 AND ta.trait_name = 'Minted By'
                 AND ta.trait_value = '\(Constants.gameAddress)'

@@ -24,6 +24,9 @@ struct Constants {
     // This contract mints game tokens and handles game logic
     static let gameAddress = "0x277902ea7ce3bbdc25304f3cf1caaed7b6f22d722a8b16827ce11fd5fcb8ac6"
     
+    // Denshokan Contract (ERC721-like tokens representing individual games)
+    static let denshokanAddress = "0x02334dc9c950c74c3228e2a343d495ae36f0b4edf06767a679569e9f9de08776"
+    
     // MARK: - Common Token Contracts (for reference)
     
     static let ethTokenAddress = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
