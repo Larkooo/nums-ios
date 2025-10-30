@@ -1152,12 +1152,23 @@ class DojoManager: ObservableObject {
             
             // Fetch the newly created game token for this user
             print("   🔍 Fetching new game token...")
-            await fetchUserGames()
-            
-            // Find the most recent game token (highest ID)
-            guard let latestGameId = games.keys.sorted(by: { $0 > $1 }).first else {
-                throw NSError(domain: "DojoManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to find newly created game"])
+            guard let accountAddress = session.address() else {
+                throw NSError(domain: "DojoManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to get account address"])
             }
+            await fetchUserGames(for: accountAddress)
+            
+            // Find the most recent game token (highest ID by comparing hex strings as numbers)
+            let sortedGames = games.sorted { game1, game2 in
+                let id1 = UInt64(game1.tokenId.dropFirst(2), radix: 16) ?? 0
+                let id2 = UInt64(game2.tokenId.dropFirst(2), radix: 16) ?? 0
+                return id1 > id2
+            }
+            
+            guard let latestGame = sortedGames.first else {
+                throw NSError(domain: "DojoManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to find newly created game"])
+            }
+            
+            let latestGameId = latestGame.tokenId
             
             print("   🎮 New game ID: \(latestGameId)")
             
