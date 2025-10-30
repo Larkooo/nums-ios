@@ -902,13 +902,23 @@ class DojoManager: ObservableObject {
         do {
             print("🎮 Fetching game model for game #\(gameId)...")
             
-            // Create query with KeysClause to fetch specific game
-            let keysClause = KeysClause(
-                keys: [gameId],
-                patternMatching: .variableLen,
-                models: ["NUMS-Game"]
+            // Convert hex game ID to UInt64
+            let hexString = gameId.hasPrefix("0x") ? String(gameId.dropFirst(2)) : gameId
+            guard let gameIdU64 = UInt64(hexString, radix: 16) else {
+                print("❌ Failed to parse game ID as hex: \(gameId)")
+                return nil
+            }
+            
+            print("   Converted gameId to UInt64: \(gameIdU64)")
+            
+            // Create MemberClause to filter on id field
+            let memberClause = MemberClause(
+                model: "NUMS-Game",
+                member: "id",
+                operator: .eq,
+                value: .primitive(value: .u64(value: gameIdU64))
             )
-            let clause = Clause.keys(clause: keysClause)
+            let clause = Clause.member(clause: memberClause)
             
             let query = Query(
                 worldAddresses: [],
@@ -1006,26 +1016,25 @@ class DojoManager: ObservableObject {
                     }
                 }
                 
-                // Check if this is the game we're looking for
-                if String(tokenId) == gameId {
-                    return GameModel(
-                        id: gameId,
-                        tokenId: tokenId,
-                        over: over,
-                        claimed: claimed,
-                        level: level,
-                        slotCount: slotCount,
-                        slotMin: slotMin,
-                        slotMax: slotMax,
-                        number: number,
-                        nextNumber: nextNumber,
-                        tournamentId: tournamentId,
-                        powers: powers,
-                        reward: reward,
-                        score: score,
-                        slots: slots
-                    )
-                }
+                // Return the game model (already filtered by query)
+                print("   ✅ Found game: tokenId=\(tokenId)")
+                return GameModel(
+                    id: gameId,
+                    tokenId: tokenId,
+                    over: over,
+                    claimed: claimed,
+                    level: level,
+                    slotCount: slotCount,
+                    slotMin: slotMin,
+                    slotMax: slotMax,
+                    number: number,
+                    nextNumber: nextNumber,
+                    tournamentId: tournamentId,
+                    powers: powers,
+                    reward: reward,
+                    score: score,
+                    slots: slots
+                )
             }
         }
         
@@ -1191,53 +1200,15 @@ class DojoManager: ObservableObject {
     }
     
     private func fetchGameModelsForUser(games: [Game]) async {
-        guard let client = toriiClient else { return }
-        
         print("🎮 Fetching game models for \(games.count) games...")
         
-        do {
-            // Build a keys clause to fetch all game entities at once
-            let gameIds = games.map { $0.tokenId }
-            
-            for gameId in gameIds {
-                // Fetch each game model individually
-                let keysClause = KeysClause(
-                    keys: [gameId],
-                    patternMatching: .variableLen,
-                    models: ["NUMS-Game"]
-                )
-                let clause = Clause.keys(clause: keysClause)
-                
-                let query = Query(
-                    worldAddresses: [],
-                    pagination: Pagination(
-                        cursor: nil,
-                        limit: 1,
-                        direction: .forward,
-                        orderBy: []
-                    ),
-                    clause: clause,
-                    noHashedKeys: false,
-                    models: ["NUMS-Game"],
-                    historical: false
-                )
-                
-                let pageEntity = try client.entities(query: query)
-                
-                if let entity = pageEntity.items.first {
-                    if let gameModel = parseGameModel(from: entity, gameId: gameId) {
-                        await MainActor.run {
-                            self.gameModels[gameModel.id] = gameModel
-                        }
-                    }
-                }
-            }
-            
-            print("✅ Game models fetched: \(await MainActor.run { self.gameModels.count }) models")
-            
-        } catch {
-            print("❌ Failed to fetch game models: \(error.localizedDescription)")
+        // Fetch each game model using the improved fetchGameModel function
+        for game in games {
+            _ = await fetchGameModel(gameId: game.tokenId)
         }
+        
+        let modelCount = await MainActor.run { self.gameModels.count }
+        print("✅ Game models fetched: \(modelCount) models")
     }
     
     // MARK: - Game Subscription (Per-Game)
