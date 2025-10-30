@@ -147,7 +147,7 @@ struct GameModel: Identifiable, Equatable {
     
     private func unpackSlots(from hexString: String, slotCount: Int, slotMax: Int) -> Set<Int> {
         // Remove "0x" prefix if present
-        let hex = hexString.hasPrefix("0x") ? String(hexString.dropFirst(2)) : hexString
+        var hex = hexString.hasPrefix("0x") ? String(hexString.dropFirst(2)) : hexString
         
         // Handle empty or zero slots
         if hex.isEmpty || hex.trimmingCharacters(in: CharacterSet(charactersIn: "0")) == "" {
@@ -155,13 +155,29 @@ struct GameModel: Identifiable, Equatable {
             return []
         }
         
-        // Convert hex string to BInt (big integer)
-        guard var packed = BInt(hex, radix: 16) else {
+        // Pad hex to ensure even number of characters for byte reversal
+        if hex.count % 2 != 0 {
+            hex = "0" + hex
+        }
+        
+        // Reverse the byte order (felt252 is stored big-endian, but we need little-endian for unpacking)
+        // Split into 2-character chunks (bytes) and reverse
+        var reversedHex = ""
+        for i in stride(from: hex.count - 2, through: 0, by: -2) {
+            let start = hex.index(hex.startIndex, offsetBy: i)
+            let end = hex.index(start, offsetBy: 2)
+            reversedHex += hex[start..<end]
+        }
+        
+        print("   🔢 Unpacking slots: original=\(hex)")
+        print("      Reversed (little-endian)=\(reversedHex)")
+        
+        // Convert reversed hex string to BInt (big integer)
+        guard var packed = BInt(reversedHex, radix: 16) else {
             print("⚠️ Failed to parse slots hex: \(hexString)")
             return []
         }
         
-        print("   🔢 Unpacking slots: hex=\(hex), slotCount=\(slotCount), slotMax=\(slotMax)")
         print("   📦 Packed value: \(packed)")
         
         // SLOT_SIZE is the modulo value (slotMax + 1 to include 0)
@@ -176,8 +192,8 @@ struct GameModel: Identifiable, Equatable {
             
             // Convert to Int and check if slot has a number (non-zero)
             if let intValue = value.asInt() {
-                print("      Slot \(index + 1): value=\(intValue)")
                 if intValue > 0 {
+                    print("      Slot \(index + 1): value=\(intValue) ✓")
                     // Slot position (index+1) contains a number, so it's "set"
                     result.insert(index + 1)
                 }
