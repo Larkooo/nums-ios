@@ -1112,13 +1112,12 @@ class DojoManager: ObservableObject {
             throw NSError(domain: "DojoManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Game not found"])
         }
         
-        // Convert parameters to felt252 (hex strings)
-        let gameIdFelt = String(format: "0x%x", UInt64(gameId) ?? 0)
+        // Game ID is already a hex string, use it directly
+        let gameIdFelt = gameId
         let slotIndex = String(format: "0x%x", slot - 1) // Convert to 0-based index
-        let slotMin = String(format: "0x%x", gameModel.slotMin)
-        let slotMax = String(format: "0x%x", gameModel.slotMax)
         
-        print("   📊 Slot range: \(gameModel.slotMin) - \(gameModel.slotMax)")
+        print("   🎲 Game ID: \(gameIdFelt)")
+        print("   🎯 Slot index (0-based): \(slotIndex)")
         
         // Multi-call: VRF request_random + game set
         guard let session = sessionManager.sessionAccount else {
@@ -1129,14 +1128,14 @@ class DojoManager: ObservableObject {
         // Create both calls
         // VRF request_random(caller: ContractAddress, source: Source)
         // Source enum: Nonce(ContractAddress) = type 0, Salt(felt252) = type 1
-        // Using Source::Salt with game ID for unique randomness per game
+        // Using Source::Nonce with game contract address (matching JS example)
         let vrfCall = Call(
             contractAddress: Constants.vrfAddress,
             entrypoint: "request_random",
             calldata: [
                 Constants.gameAddress,  // caller: the game contract
-                "0x1",                  // source type: 1 = Salt
-                gameIdFelt              // source data: game ID as salt
+                "0x0",                  // source type: 0 = Nonce
+                Constants.gameAddress   // source data: game contract address for Nonce
             ]
         )
         
