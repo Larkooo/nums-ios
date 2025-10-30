@@ -123,6 +123,11 @@ struct GameView: View {
         }
         .navigationBarHidden(true)
         .onAppear {
+            // Subscribe to game updates
+            Task {
+                await dojoManager.subscribeToGame(gameTokenId)
+            }
+            
             if isNewGame {
                 startNewGame()
             } else {
@@ -132,6 +137,34 @@ struct GameView: View {
             // Start timer for countdown
             Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
                 currentTime = Date()
+            }
+        }
+        .onDisappear {
+            // Unsubscribe from game updates
+            Task {
+                await dojoManager.unsubscribeFromGame(gameTokenId)
+            }
+        }
+        .onChange(of: dojoManager.gameModels[gameTokenId]) { newModel in
+            // Update UI when game model changes via subscription
+            if let model = newModel {
+                currentNumber = model.number
+                nextNumber = model.nextNumber
+                gameLevel = model.level
+                powers = model.powers
+                score = model.score
+                reward = model.reward
+                slotMin = model.slotMin
+                slotMax = model.slotMax
+                slotCount = model.slotCount
+                isGameOver = model.over
+                setSlots = model.setSlots
+                
+                // Clear loading state if we were setting a slot
+                if isSettingSlot {
+                    isSettingSlot = false
+                    selectedSlot = nil
+                }
             }
         }
     }
@@ -149,14 +182,8 @@ struct GameView: View {
                 sessionManager: sessionManager
             )
             
-            // Wait a bit and reload game state
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            await loadGame()
-            
-            await MainActor.run {
-                isSettingSlot = false
-                selectedSlot = nil
-            }
+            // Game state will update automatically via subscription
+            // No need to manually reload
         }
     }
     
@@ -168,9 +195,10 @@ struct GameView: View {
                 sessionManager: sessionManager
             )
             
-            // Wait for transaction to be processed
+            // Game state will update automatically via subscription
+            // Initial load happens after a few seconds
             try? await Task.sleep(nanoseconds: 3_000_000_000)
-            await loadGame()
+            await loadGame() // One-time load to get initial state
         }
     }
     

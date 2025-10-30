@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 
-// MARK: - Token Balance Callback
+// MARK: - Callbacks
 
 class TokenBalanceCallback: TokenBalanceUpdateCallback {
     private let updateHandler: (TokenBalance) -> Void
@@ -16,6 +16,22 @@ class TokenBalanceCallback: TokenBalanceUpdateCallback {
     
     func onError(error: String) {
         print("❌ Token balance subscription error: \(error)")
+    }
+}
+
+class EntityCallback: EntityUpdateCallback {
+    private let updateHandler: (Entity) -> Void
+    
+    init(onUpdate: @escaping (Entity) -> Void) {
+        self.updateHandler = onUpdate
+    }
+    
+    func onUpdate(entity: Entity) {
+        updateHandler(entity)
+    }
+    
+    func onError(error: String) {
+        print("❌ Entity subscription error: \(error)")
     }
 }
 
@@ -183,6 +199,7 @@ class DojoManager: ObservableObject {
     private var tournamentSubscriptionId: UInt64?
     private var leaderboardSubscriptionId: UInt64?
     private var tokenBalanceSubscriptionId: UInt64?
+    private var gameSubscriptions: [String: UInt64] = [:] // game_id -> subscription_id
     
     // Error handling
     @Published var errorMessage: String?
@@ -1330,6 +1347,85 @@ class DojoManager: ObservableObject {
             
         } catch {
             print("❌ Failed to set slot: \(error.localizedDescription)")
+        }
+    }
+    
+    // MARK: - Game Subscription
+    
+    func subscribeToGame(_ gameId: String) async {
+        guard let client = toriiClient else {
+            print("⚠️ Torii client not initialized")
+            return
+        }
+        
+        // Check if already subscribed
+        if gameSubscriptions[gameId] != nil {
+            print("ℹ️ Already subscribed to game \(gameId)")
+            return
+        }
+        
+        print("🔔 Subscribing to game entity updates for game #\(gameId)...")
+        
+        do {
+            // Build clause to match the specific game entity
+            // NUMS-Game entity has keys: [game_id]
+            let gameIdU256 = gameId // tokenId is already a string
+            
+            // Create a clause to match entities with this token ID
+            let keyClause = HashedKeysClause(
+                modelId: "NUMS-Game",
+                keys: [gameIdU256]
+            )
+            
+            let clause = Clause.hashedKeys(keyClause)
+            
+            // Subscribe with callback
+            let callback = EntityCallback { [weak self] entity in
+                guard let self = self else { return }
+                
+                print("🎮 Game entity update received for game #\(gameId)")
+                
+                // Parse the updated entity into GameModel
+                if let updatedModel = self.parseGameModel(from: entity) {
+                    Task { @MainActor in
+                        // Update the game model in our dictionary
+                        self.gameModels[gameId] = updatedModel
+                        print("✅ Game model updated: score=\(updatedModel.score), number=\(updatedModel.number)")
+                    }
+                }
+            }
+            
+            let subscriptionId = try client.subscribeEntityUpdates(
+                clause: clause,
+                worldAddresses: [],
+                callback: callback
+            )
+            
+            gameSubscriptions[gameId] = subscriptionId
+            print("✅ Subscribed to game #\(gameId) (subscription ID: \(subscriptionId))")
+            
+        } catch {
+            print("❌ Failed to subscribe to game: \(error.localizedDescription)")
+        }
+    }
+    
+    func unsubscribeFromGame(_ gameId: String) async {
+        guard let client = toriiClient else {
+            print("⚠️ Torii client not initialized")
+            return
+        }
+        
+        guard let subscriptionId = gameSubscriptions[gameId] else {
+            print("ℹ️ No active subscription for game \(gameId)")
+            return
+        }
+        
+        do {
+            try client.unsubscribe(subscriptionId: subscriptionId)
+            gameSubscriptions.removeValue(forKey: gameId)
+            print("✅ Unsubscribed from game #\(gameId)")
+        } catch {
+            print("❌ Failed to unsubscribe from game: \(error.localizedDescription)")
         }
     }
     
