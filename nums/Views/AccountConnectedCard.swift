@@ -15,10 +15,11 @@ struct AccountConnectedCard: View {
             
             // Success Card
             VStack(spacing: 20) {
-                // Controller Icon
+                // Controller Icon with extra top padding
                 Image(systemName: "gamecontroller.fill")
                     .font(.system(size: 60))
                     .foregroundColor(.white)
+                    .padding(.top, 20)
                 
                 // Title
                 Text("Account Connected!")
@@ -70,24 +71,17 @@ struct AccountConnectedCard: View {
                 }
                 .padding(.horizontal, 24)
                 
-                // Continue Button
+                // Continue Button styled like top bar icons
                 Button(action: {
                     isPresented = false
                 }) {
                     Text("Continue")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4))
+                        .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(
-                            LinearGradient(
-                                colors: [Color.yellow, Color.orange],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
+                        .background(Color.white.opacity(0.1))
                         .cornerRadius(12)
-                        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
                 }
                 .padding(.horizontal, 24)
             }
