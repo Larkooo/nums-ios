@@ -39,35 +39,44 @@ struct GameSelectionSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Purple background
-                Color(red: 0.349, green: 0.122, blue: 1.0)
-                    .ignoresSafeArea()
+                // Purple gradient background (matching GameView)
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.4, green: 0.2, blue: 0.8),
+                        Color(red: 0.3, green: 0.1, blue: 0.6)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Custom Header with Close Button
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Enter \(tournamentName)")
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.white)
-                        Text("Tournament ends in \(timeRemaining)")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.7))
+                // Glass morphism container
+                VStack(spacing: 0) {
+                    // Custom Header with Close Button
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Enter \(tournamentName)")
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundColor(.white)
+                            Text("Tournament ends in \(timeRemaining)")
+                                .font(.system(size: 14))
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            dismiss()
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 28))
+                                .foregroundColor(.white.opacity(0.6))
+                        }
                     }
-                    
-                    Spacer()
-                    
-                    Button(action: {
-                        dismiss()
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(.white.opacity(0.6))
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
-                .padding(.bottom, 16)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    .padding(.bottom, 16)
                 
                 // Entry Options
                 HStack(spacing: 12) {
@@ -80,8 +89,18 @@ struct GameSelectionSheet: View {
                             .foregroundColor(.white.opacity(0.5))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(Color.white.opacity(0.2))
-                            .cornerRadius(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(Color.white.opacity(0.15))
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                    )
+                            )
                     }
                     .disabled(true)
                     
@@ -113,8 +132,18 @@ struct GameSelectionSheet: View {
                             .foregroundColor(.white.opacity(0.5))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(Color.white.opacity(0.2))
-                            .cornerRadius(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(Color.white.opacity(0.15))
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                    )
+                            )
                     }
                     .disabled(true)
                 }
@@ -157,8 +186,48 @@ struct GameSelectionSheet: View {
                         .padding(20)
                     }
                 }
-            }
-            .padding(.top, 20)
+                }
+                .background(
+                    ZStack {
+                        // Glassmorphism effect
+                        RoundedRectangle(cornerRadius: 30)
+                            .fill(.ultraThinMaterial)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 30)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.white.opacity(0.25),
+                                                Color.white.opacity(0.1),
+                                                Color.white.opacity(0.05)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 30)
+                                    .stroke(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.white.opacity(0.6),
+                                                Color.white.opacity(0.3),
+                                                Color.white.opacity(0.1)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 1.5
+                                    )
+                            )
+                            .shadow(color: Color.black.opacity(0.3), radius: 20, x: 0, y: 10)
+                            .shadow(color: Color.purple.opacity(0.3), radius: 30, x: 0, y: 20)
+                    }
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 20)
+                .padding(.bottom, 20)
             }
             .navigationBarHidden(true)
         }
@@ -218,8 +287,26 @@ struct GameRow: View {
             // Game icon
             ZStack {
                 Circle()
-                    .fill(Color.white.opacity(0.1))
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.3),
+                                        Color.white.opacity(0.1)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.4), lineWidth: 1.5)
+                    )
                     .frame(width: 60, height: 60)
+                    .shadow(color: Color.purple.opacity(0.3), radius: 8, x: 0, y: 4)
                 
                 Image(systemName: "gamecontroller.fill")
                     .font(.system(size: 24))
@@ -255,8 +342,18 @@ struct GameRow: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 10)
-                            .background(Color.white.opacity(0.2))
-                            .cornerRadius(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(Color.white.opacity(0.2))
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.white.opacity(0.4), lineWidth: 1)
+                                    )
+                            )
                             .lineLimit(1)
                     } else {
                         Text("Play")
@@ -278,8 +375,31 @@ struct GameRow: View {
             }
         }
         .padding(16)
-        .background(Color.white.opacity(0.1))
-        .cornerRadius(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.2),
+                                    Color.white.opacity(0.1)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(
+                            Color.white.opacity(0.3),
+                            lineWidth: 1
+                        )
+                )
+                .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+        )
     }
 }
 
