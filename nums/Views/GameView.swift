@@ -29,8 +29,8 @@ struct GameView: View {
     @State private var spinningNumber: UInt16 = 0
     @State private var optimisticSlotValues: [Int: UInt16] = [:] // slot number -> value
     @State private var showGameOverAnimation = false
-    @State private var gameOverScale: CGFloat = 0.5
     @State private var gameOverOpacity: Double = 0.0
+    @State private var glowPulse: CGFloat = 1.0
     
     var body: some View {
         ZStack {
@@ -63,14 +63,14 @@ struct GameView: View {
                 
                 // Current Number Display
                 ZStack {
-                    // Pulsing glow effect
+                    // Continuously pulsating glow effect
                     if currentNumber > 0 || isSpinning {
                         Circle()
                             .fill(
                                 RadialGradient(
                                     colors: [
-                                        Color.purple.opacity(0.4),
-                                        Color.purple.opacity(0.2),
+                                        Color.purple.opacity(0.5 * glowPulse),
+                                        Color.purple.opacity(0.25 * glowPulse),
                                         Color.clear
                                     ],
                                     center: .center,
@@ -79,9 +79,7 @@ struct GameView: View {
                                 )
                             )
                             .frame(width: 160, height: 160)
-                            .scaleEffect(isSpinning ? 1.2 : 1.0)
-                            .opacity(isSpinning ? 0.8 : 0.5)
-                            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isSpinning)
+                            .scaleEffect(0.8 + (0.4 * glowPulse))
                     }
                     
                     VStack(spacing: 6) {
@@ -281,25 +279,10 @@ struct GameView: View {
                     }
                 
                 VStack(spacing: 24) {
-                    // Skull icon or game over symbol
-                    ZStack {
-                        Circle()
-                            .fill(
-                                RadialGradient(
-                                    colors: [Color.red.opacity(0.3), Color.clear],
-                                    center: .center,
-                                    startRadius: 0,
-                                    endRadius: 100
-                                )
-                            )
-                            .frame(width: 200, height: 200)
-                            .scaleEffect(gameOverScale)
-                        
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 100, weight: .bold))
-                            .foregroundColor(.red)
-                            .shadow(color: .red.opacity(0.5), radius: 20, x: 0, y: 0)
-                    }
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 100, weight: .bold))
+                        .foregroundColor(.red)
+                        .shadow(color: .red.opacity(0.5), radius: 20, x: 0, y: 0)
                     
                     Text("GAME OVER!")
                         .font(.system(size: 48, weight: .black, design: .rounded))
@@ -343,7 +326,6 @@ struct GameView: View {
                     .padding(.horizontal, 40)
                     .padding(.top, 8)
                 }
-                .scaleEffect(gameOverScale)
                 .opacity(gameOverOpacity)
             }
         }
@@ -353,6 +335,11 @@ struct GameView: View {
             
             // Stop leaderboard polling while in game view
             dojoManager.stopLeaderboardPolling()
+            
+            // Start continuous glow pulsation
+            withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
+                glowPulse = 1.5
+            }
             
             // Check if model already exists in dictionary
             if let existingModel = dojoManager.gameModels[gameTokenId] {
@@ -511,25 +498,19 @@ struct GameView: View {
     private func showGameOverModal() {
         showGameOverAnimation = true
         
-        // Animate in
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.6)) {
-            gameOverScale = 1.0
+        // Simple fade in
+        withAnimation(.easeInOut(duration: 0.3)) {
             gameOverOpacity = 1.0
-        }
-        
-        // Pulse the red glow
-        withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
-            gameOverScale = 1.1
         }
     }
     
     private func dismissGameOver() {
-        withAnimation(.spring()) {
+        // Simple fade out
+        withAnimation(.easeOut(duration: 0.2)) {
             gameOverOpacity = 0.0
-            gameOverScale = 0.5
         }
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             showGameOverAnimation = false
         }
     }
