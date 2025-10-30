@@ -319,15 +319,15 @@ struct MainView: View {
                 VStack(spacing: 12) {
                     VStack(spacing: 12) {
                         // Tournament Title & Status
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
+                        HStack(alignment: .center, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 2) {
                                 Text("TOURNAMENT #\(tournamentId)")
-                                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                                    .font(.system(size: 20, weight: .bold, design: .rounded))
                                     .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .fixedSize(horizontal: false, vertical: true)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
                                 Text("ACTIVE")
-                                    .font(.system(size: 14, weight: .bold))
+                                    .font(.system(size: 12, weight: .bold))
                                     .foregroundColor(.green)
                             }
                             
@@ -336,12 +336,12 @@ struct MainView: View {
                             // Timer Display (fixed width to prevent layout shift)
                             VStack(alignment: .trailing, spacing: 2) {
                                 Text("ENDS IN")
-                                    .font(.system(size: 11, weight: .semibold))
+                                    .font(.system(size: 10, weight: .semibold))
                                     .foregroundColor(.white.opacity(0.6))
                                 Text(timeRemaining)
-                                    .font(.system(size: 20, weight: .bold, design: .monospaced))
+                                    .font(.system(size: 18, weight: .bold, design: .monospaced))
                                     .foregroundColor(.white)
-                                    .frame(minWidth: 100, alignment: .trailing)
+                                    .frame(minWidth: 90, alignment: .trailing)
                             }
                         }
                         
