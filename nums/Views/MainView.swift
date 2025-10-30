@@ -345,19 +345,22 @@ struct MainView: View {
                             }
                         }
                         
-                        // Stats Row
+                        // Stats Row - Icons on left
                         HStack(spacing: 0) {
                             // Entries
-                            VStack(spacing: 4) {
+                            HStack(spacing: 8) {
                                 Image(systemName: "person.2.fill")
-                                    .font(.system(size: 16))
+                                    .font(.system(size: 18))
                                     .foregroundColor(.purple.opacity(0.8))
-                                Text("\(entryCount)")
-                                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                                    .foregroundColor(.white)
-                                Text("ENTRIES")
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.6))
+                                    .frame(width: 24)
+                                VStack(alignment: .leading, spacing: 0) {
+                                    Text("\(entryCount)")
+                                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white)
+                                    Text("ENTRIES")
+                                        .font(.system(size: 9, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.6))
+                                }
                             }
                             .frame(maxWidth: .infinity)
                             
@@ -366,16 +369,19 @@ struct MainView: View {
                                 .background(Color.white.opacity(0.2))
                             
                             // Duration
-                            VStack(spacing: 4) {
+                            HStack(spacing: 8) {
                                 Image(systemName: "clock.fill")
-                                    .font(.system(size: 16))
+                                    .font(.system(size: 18))
                                     .foregroundColor(.purple.opacity(0.8))
-                                Text(tournamentDuration)
-                                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                                    .foregroundColor(.white)
-                                Text("DURATION")
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.6))
+                                    .frame(width: 24)
+                                VStack(alignment: .leading, spacing: 0) {
+                                    Text(tournamentDuration)
+                                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white)
+                                    Text("DURATION")
+                                        .font(.system(size: 9, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.6))
+                                }
                             }
                             .frame(maxWidth: .infinity)
                             
@@ -384,16 +390,19 @@ struct MainView: View {
                                 .background(Color.white.opacity(0.2))
                             
                             // Powers
-                            VStack(spacing: 4) {
+                            HStack(spacing: 8) {
                                 Image(systemName: "bolt.fill")
-                                    .font(.system(size: 16))
+                                    .font(.system(size: 18))
                                     .foregroundColor(.yellow.opacity(0.8))
-                                Text("\(powers)")
-                                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                                    .foregroundColor(.white)
-                                Text("POWERS")
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.6))
+                                    .frame(width: 24)
+                                VStack(alignment: .leading, spacing: 0) {
+                                    Text("\(powers)")
+                                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white)
+                                    Text("POWERS")
+                                        .font(.system(size: 9, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.6))
+                                }
                             }
                             .frame(maxWidth: .infinity)
                         }
