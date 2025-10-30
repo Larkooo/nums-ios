@@ -57,13 +57,13 @@ struct GameSelectionSheet: View {
                     
                     Spacer()
                     
-                    // Button(action: {
-                    //     dismiss()
-                    // }) {
-                    //     Image(systemName: "xmark.circle.fill")
-                    //         .font(.system(size: 28))
-                    //         .foregroundColor(.white.opacity(0.6))
-                    // }
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundColor(.white.opacity(0.6))
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
@@ -163,6 +163,9 @@ struct GameSelectionSheet: View {
             .navigationBarHidden(true)
         }
         .onAppear {
+            // Stop leaderboard polling while in game selection
+            dojoManager.stopLeaderboardPolling()
+            
             // Start timer to update countdown every second
             Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
                 currentTime = Date()
@@ -175,6 +178,10 @@ struct GameSelectionSheet: View {
                     await dojoManager.fetchUserGames(for: userAddress)
                 }
             }
+        }
+        .onDisappear {
+            // Resume leaderboard polling when returning to main view
+            dojoManager.resumeLeaderboardPolling()
         }
     }
 }

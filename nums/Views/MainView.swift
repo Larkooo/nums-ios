@@ -582,12 +582,10 @@ struct MainView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $showGameSelection) {
+        .fullScreenCover(isPresented: $showGameSelection) {
             GameSelectionSheet()
                 .environmentObject(dojoManager)
                 .environmentObject(sessionManager)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showHowToPlay) {
             HowToPlaySheet()

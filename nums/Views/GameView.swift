@@ -198,6 +198,9 @@ struct GameView: View {
         .onAppear {
             print("🎮 GameView appeared for token: \(gameTokenId), isNewGame: \(isNewGame)")
             
+            // Stop leaderboard polling while in game view
+            dojoManager.stopLeaderboardPolling()
+            
             // Check if model already exists in dictionary
             if let existingModel = dojoManager.gameModels[gameTokenId] {
                 print("   📦 Found existing model in dictionary, loading immediately...")
@@ -233,6 +236,9 @@ struct GameView: View {
             }
         }
         .onDisappear {
+            // Resume leaderboard polling when returning to main view
+            dojoManager.resumeLeaderboardPolling()
+            
             // Unsubscribe from this game
             Task {
                 await dojoManager.unsubscribeFromGame(gameTokenId)

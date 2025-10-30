@@ -554,6 +554,22 @@ class DojoManager: ObservableObject {
         print("⏰ Started leaderboard polling (every 3s)")
     }
     
+    // Public method to stop leaderboard polling
+    func stopLeaderboardPolling() {
+        leaderboardTimer?.invalidate()
+        leaderboardTimer = nil
+        print("⏸️ Stopped leaderboard polling")
+    }
+    
+    // Public method to resume leaderboard polling for current tournament
+    func resumeLeaderboardPolling() {
+        guard let tournament = selectedTournament else {
+            print("⚠️ Cannot resume polling: No tournament selected")
+            return
+        }
+        startLeaderboardPolling(tournamentId: tournament.id)
+    }
+    
     private func refreshLeaderboard(tournamentId: Int) async {
         // Only refresh if user hasn't paginated beyond first page
         // This prevents resetting their scroll position
