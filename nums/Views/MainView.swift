@@ -139,13 +139,22 @@ struct MainView: View {
     }
     
     private func loadMoreLeaderboardEntries() {
-        guard let tournamentId = dojoManager.selectedTournament?.id,
-              dojoManager.hasMoreLeaderboardEntries,
-              !dojoManager.isLoadingLeaderboard,
-              !dojoManager.isLoadingMoreLeaderboard else {
+        guard let tournamentId = dojoManager.selectedTournament?.id else {
+            print("⚠️ No tournament selected")
             return
         }
         
+        guard dojoManager.hasMoreLeaderboardEntries else {
+            print("ℹ️ No more leaderboard entries to load")
+            return
+        }
+        
+        guard !dojoManager.isLoadingLeaderboard, !dojoManager.isLoadingMoreLeaderboard else {
+            print("ℹ️ Already loading leaderboard")
+            return
+        }
+        
+        print("📜 Triggering load more - current count: \(dojoManager.arcadeLeaderboard.count)")
         Task {
             await dojoManager.loadMoreLeaderboard(tournamentId: tournamentId)
         }
@@ -446,8 +455,10 @@ struct MainView: View {
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 8)
                                 .onAppear {
-                                    // Load more when we're near the end (within last 10 items)
-                                    if entry.id == leaderboard[max(0, leaderboard.count - 10)].id {
+                                    // Load more when we're near the end (within last 5 items or 20% of list)
+                                    let triggerPoint = max(leaderboard.count - 5, Int(Double(leaderboard.count) * 0.8))
+                                    if let index = leaderboard.firstIndex(where: { $0.id == entry.id }),
+                                       index >= triggerPoint {
                                         loadMoreLeaderboardEntries()
                                     }
                                 }

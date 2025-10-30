@@ -215,7 +215,7 @@ class DojoManager: ObservableObject {
     @Published var isLoadingMoreLeaderboard = false // For pagination only
     @Published var hasMoreLeaderboardEntries = true
     private var leaderboardOffset = 0
-    private let leaderboardPageSize = 50
+    private let leaderboardPageSize = 10
     
     // Game Models (NUMS-Game entities mapped by token ID)
     @Published var gameModels: [String: GameModel] = [:]
@@ -507,11 +507,25 @@ class DojoManager: ObservableObject {
         leaderboardTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             Task {
-                await self.fetchLeaderboardSQL(tournamentId: tournamentId)
+                await self.refreshLeaderboard(tournamentId: tournamentId)
             }
         }
         
         print("⏰ Started leaderboard polling (every 3s)")
+    }
+    
+    private func refreshLeaderboard(tournamentId: Int) async {
+        // Only refresh if user hasn't paginated beyond first page
+        // This prevents resetting their scroll position
+        let shouldRefresh = await MainActor.run {
+            self.leaderboardOffset <= self.leaderboardPageSize
+        }
+        
+        if shouldRefresh {
+            await fetchLeaderboardSQL(tournamentId: tournamentId, reset: true)
+        } else {
+            print("⏭️ Skipping leaderboard refresh - user has paginated beyond first page")
+        }
     }
     
     
