@@ -55,36 +55,36 @@ struct GameView: View {
                 .padding(.top, 16)
                 
                 // Current Number Display
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     Text("YOUR NUMBER IS...")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundColor(.white.opacity(0.6))
-                        .tracking(2.5)
+                        .tracking(2)
                     
                     if currentNumber > 0 {
                         Text("\(currentNumber)")
-                            .font(.system(size: 72, weight: .black, design: .rounded))
+                            .font(.system(size: 56, weight: .black, design: .rounded))
                             .foregroundColor(.white)
-                            .shadow(color: .purple.opacity(0.6), radius: 12, x: 0, y: 4)
-                            .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+                            .shadow(color: .purple.opacity(0.6), radius: 10, x: 0, y: 3)
+                            .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 2)
                     } else if isNewGame {
                         Text("START")
-                            .font(.system(size: 36, weight: .black, design: .rounded))
+                            .font(.system(size: 28, weight: .black, design: .rounded))
                             .foregroundColor(.white.opacity(0.5))
                     } else {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(1.5)
+                            .scaleEffect(1.2)
                     }
                 }
-                .frame(height: 100)
-                .padding(.top, 8)
-                .padding(.bottom, 16)
+                .frame(height: 75)
+                .padding(.top, 4)
+                .padding(.bottom, 12)
                 
                 // Slots Grid (2 columns, 10 rows) - Centered with padding
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     ForEach(0..<10, id: \.self) { row in
-                        HStack(spacing: 12) {
+                        HStack(spacing: 10) {
                             // Left column
                             SlotButton(
                                 slotNumber: row + 1,
@@ -111,29 +111,29 @@ struct GameView: View {
                 }
                 .padding(.horizontal, 40)
                 
-                Spacer(minLength: 32)
+                Spacer(minLength: 16)
                 
                 // Bottom Score and Reward Info
                 HStack(spacing: 0) {
                     // Score
-                    VStack(alignment: .center, spacing: 8) {
+                    VStack(alignment: .center, spacing: 4) {
                         Image(systemName: "star.fill")
-                            .font(.system(size: 20))
+                            .font(.system(size: 16))
                             .foregroundColor(.purple.opacity(0.8))
                         Text("SCORE")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .font(.system(size: 10, weight: .semibold, design: .rounded))
                             .foregroundColor(.white.opacity(0.5))
-                            .tracking(1)
+                            .tracking(0.8)
                         Text("\(score)")
-                            .font(.system(size: 32, weight: .black, design: .rounded))
+                            .font(.system(size: 24, weight: .black, design: .rounded))
                             .foregroundColor(.white)
-                            .shadow(color: .purple.opacity(0.3), radius: 4, x: 0, y: 2)
+                            .shadow(color: .purple.opacity(0.3), radius: 3, x: 0, y: 2)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 4)
                     
                     Divider()
-                        .frame(width: 2, height: 80)
+                        .frame(width: 2, height: 60)
                         .background(
                             LinearGradient(
                                 colors: [.white.opacity(0.1), .white.opacity(0.3), .white.opacity(0.1)],
@@ -143,24 +143,24 @@ struct GameView: View {
                         )
                     
                     // Reward
-                    VStack(alignment: .center, spacing: 8) {
+                    VStack(alignment: .center, spacing: 4) {
                         Image(systemName: "trophy.fill")
-                            .font(.system(size: 20))
+                            .font(.system(size: 16))
                             .foregroundColor(.yellow.opacity(0.9))
                         Text("REWARD")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .font(.system(size: 10, weight: .semibold, design: .rounded))
                             .foregroundColor(.white.opacity(0.5))
-                            .tracking(1)
+                            .tracking(0.8)
                         Text("\(reward)")
-                            .font(.system(size: 32, weight: .black, design: .rounded))
+                            .font(.system(size: 24, weight: .black, design: .rounded))
                             .foregroundColor(.yellow)
-                            .shadow(color: .yellow.opacity(0.3), radius: 4, x: 0, y: 2)
+                            .shadow(color: .yellow.opacity(0.3), radius: 3, x: 0, y: 2)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 4)
                 }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 20)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
                 .background(
                     RoundedRectangle(cornerRadius: 20)
                         .fill(
@@ -184,7 +184,7 @@ struct GameView: View {
                         .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
                 )
                 .padding(.horizontal, 20)
-                .padding(.bottom, 32)
+                .padding(.bottom, 20)
             }
             .safeAreaInset(edge: .top, spacing: 0) {
                 Color.clear.frame(height: 0)
@@ -338,21 +338,21 @@ struct SlotButton: View {
     
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Text("\(slotNumber).")
-                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundColor(.white.opacity(0.5))
-                    .frame(width: 32, alignment: .trailing)
+                    .frame(width: 28, alignment: .trailing)
                 
                 Text(displayText)
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
                     .foregroundColor(isSet ? .white : .white.opacity(0.4))
-                    .frame(width: 65)
+                    .frame(width: 58)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 48)
+            .frame(height: 38)
             .background(
                 Group {
                     if isSet {
@@ -370,9 +370,9 @@ struct SlotButton: View {
                     }
                 }
             )
-            .cornerRadius(14)
+            .cornerRadius(12)
             .overlay(
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 12)
                     .stroke(
                         LinearGradient(
                             colors: isSet
@@ -384,7 +384,7 @@ struct SlotButton: View {
                         lineWidth: 1.5
                     )
             )
-            .shadow(color: isSet ? Color.green.opacity(0.3) : Color.black.opacity(0.2), radius: isSet ? 6 : 3, x: 0, y: 2)
+            .shadow(color: isSet ? Color.green.opacity(0.3) : Color.black.opacity(0.2), radius: isSet ? 5 : 2, x: 0, y: 1.5)
         }
         .disabled(isDisabled || isSet)
         .buttonStyle(ScaleButtonStyle())
