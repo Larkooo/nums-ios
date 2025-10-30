@@ -77,10 +77,10 @@ struct GameView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 12)
                 
-                // Slots Grid (2 columns, 10 rows)
-                VStack(spacing: 8) {
+                // Slots Grid (2 columns, 10 rows) - Full width and centered
+                VStack(spacing: 10) {
                     ForEach(0..<10, id: \.self) { row in
-                        HStack(spacing: 30) {
+                        HStack(spacing: 0) {
                             // Left column
                             SlotButton(
                                 slotNumber: row + 1,
@@ -90,6 +90,7 @@ struct GameView: View {
                                     setSlot(row + 1)
                                 }
                             )
+                            .frame(maxWidth: .infinity)
                             
                             // Right column
                             SlotButton(
@@ -100,25 +101,47 @@ struct GameView: View {
                                     setSlot(row + 11)
                                 }
                             )
+                            .frame(maxWidth: .infinity)
                         }
                     }
                 }
-                .padding(.horizontal, 30)
+                .padding(.horizontal, 16)
                 
                 Spacer(minLength: 8)
                 
-                // Bottom Jackpot Info
-                if let tournament = dojoManager.selectedTournament {
-                    JackpotInfo(
-                        tournamentId: tournament.id,
-                        jackpotAmount: "$\(String(format: "%.2f", Double(tournament.entryCount) * 0.065))",
-                        isActive: tournament.isActive,
-                        timeRemaining: tournament.timeRemaining,
-                        currentTime: currentTime
-                    )
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 16)
+                // Bottom Score and Reward Info
+                HStack(spacing: 0) {
+                    // Score
+                    VStack(alignment: .center, spacing: 4) {
+                        Text("SCORE")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.6))
+                        Text("\(score)")
+                            .font(.system(size: 28, weight: .black, design: .rounded))
+                            .foregroundColor(.white)
+                    }
+                    .frame(maxWidth: .infinity)
+                    
+                    Divider()
+                        .frame(width: 1, height: 50)
+                        .background(Color.white.opacity(0.2))
+                    
+                    // Reward
+                    VStack(alignment: .center, spacing: 4) {
+                        Text("REWARD")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.6))
+                        Text("\(reward)")
+                            .font(.system(size: 28, weight: .black, design: .rounded))
+                            .foregroundColor(.yellow)
+                    }
+                    .frame(maxWidth: .infinity)
                 }
+                .padding(20)
+                .background(Color.black.opacity(0.3))
+                .cornerRadius(16)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
             }
         }
         .navigationBarHidden(true)
@@ -231,30 +254,32 @@ struct SlotButton: View {
     let action: () -> Void
     
     var body: some View {
-        HStack(spacing: 12) {
-            Text("\(slotNumber).")
-                .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundColor(.white.opacity(0.6))
-                .frame(width: 40, alignment: .trailing)
-            
-            Button(action: action) {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Text("\(slotNumber).")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.6))
+                    .frame(width: 35, alignment: .trailing)
+                
                 Text(isSet ? "✓" : "Set")
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
-                    .frame(width: 80, height: 40)
-                    .background(
-                        isSet
-                            ? Color.green.opacity(0.6)
-                            : Color.white.opacity(0.15)
-                    )
-                    .cornerRadius(12)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                    )
+                    .frame(width: 70)
             }
-            .disabled(isDisabled || isSet)
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
+            .background(
+                isSet
+                    ? Color.green.opacity(0.6)
+                    : Color.white.opacity(0.15)
+            )
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+            )
         }
+        .disabled(isDisabled || isSet)
     }
 }
 
