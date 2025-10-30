@@ -215,7 +215,7 @@ class DojoManager: ObservableObject {
     @Published var isLoadingMoreLeaderboard = false // For pagination only
     @Published var hasMoreLeaderboardEntries = true
     private var leaderboardOffset = 0
-    private let leaderboardPageSize = 50
+    private let leaderboardPageSize = 20
     
     // Game Models (NUMS-Game entities mapped by token ID)
     @Published var gameModels: [String: GameModel] = [:]

@@ -463,17 +463,16 @@ struct MainView: View {
                                 }
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 8)
-                                .onAppear {
-                                    // Load more when we're near the end (within last 3 items)
-                                    let triggerPoint = max(0, leaderboard.count - 3)
-                                    if let index = leaderboard.firstIndex(where: { $0.id == entry.id }) {
-                                        print("🔍 Item appeared: index \(index)/\(leaderboard.count), trigger: \(triggerPoint), hasMore: \(dojoManager.hasMoreLeaderboardEntries)")
-                                        if index >= triggerPoint && dojoManager.hasMoreLeaderboardEntries {
-                                            print("🎯 Trigger point reached!")
-                                            loadMoreLeaderboardEntries()
-                                        }
+                            }
+                            
+                            // Sentinel view at the bottom - triggers loading when it appears
+                            if dojoManager.hasMoreLeaderboardEntries {
+                                Color.clear
+                                    .frame(height: 1)
+                                    .onAppear {
+                                        print("🎯 BOTTOM SENTINEL APPEARED - Loading more!")
+                                        loadMoreLeaderboardEntries()
                                     }
-                                }
                             }
                             
                             // Loading indicator at bottom (only for pagination)
@@ -486,12 +485,19 @@ struct MainView: View {
                                 }
                                 .padding(.vertical, 20)
                             }
+                            
+                            // End of list indicator
+                            if !dojoManager.hasMoreLeaderboardEntries && !leaderboard.isEmpty {
+                                Text("End of leaderboard")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.5))
+                                    .padding(.vertical, 20)
+                            }
                         }
                     }
                 }
                 .frame(maxHeight: .infinity)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 12)
+                .padding(.horizontal, 16)               
                 
                 // Page Navigation (TODO: Implement pagination or infinite scrolling)
                 // HStack(spacing: 12) {
@@ -562,7 +568,6 @@ struct MainView: View {
                         .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 20)
             }
         }
         .sheet(isPresented: $sessionManager.showWebView) {
