@@ -52,7 +52,7 @@ struct GameView: View {
                     Spacer()
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 8)
+                .padding(.top, 16)
                 
                 // Current Number Display
                 VStack(spacing: 8) {
@@ -184,7 +184,13 @@ struct GameView: View {
                         .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
                 )
                 .padding(.horizontal, 20)
-                .padding(.bottom, 24)
+                .padding(.bottom, 32)
+            }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                Color.clear.frame(height: 0)
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                Color.clear.frame(height: 0)
             }
         }
         .offset(x: dragOffset)
