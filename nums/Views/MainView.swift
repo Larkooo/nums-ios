@@ -167,8 +167,8 @@ struct MainView: View {
             return
         }
         
-        // Check if leaderboard has finished loading
-        let leaderboardReady = !dojoManager.isLoadingLeaderboard
+        // Check if leaderboard has finished loading (or has data)
+        let leaderboardReady = !dojoManager.isLoadingLeaderboard || !dojoManager.arcadeLeaderboard.isEmpty
         
         // Check if balance has loaded (if we have a session)
         let balanceReady: Bool
@@ -177,6 +177,8 @@ struct MainView: View {
         } else {
             balanceReady = true // No session, so balance isn't needed
         }
+        
+        print("🔍 Checking initial load: leaderboard=\(leaderboardReady), balance=\(balanceReady), isLoading=\(dojoManager.isLoadingLeaderboard)")
         
         // Mark as complete when both are ready
         if leaderboardReady && balanceReady {
@@ -686,6 +688,14 @@ struct MainView: View {
             Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
                 currentTime = Date()
             }
+            
+            // Fallback timeout - show main view after 5 seconds even if loading isn't complete
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                if !isInitialLoadComplete {
+                    print("⚠️ Timeout reached - forcing initial load complete")
+                    isInitialLoadComplete = true
+                }
+            }
         }
         .onChange(of: dojoManager.isConnected) { isConnected in
             // When Torii client connects, fetch balance if we have a valid session
@@ -725,6 +735,12 @@ struct MainView: View {
         }
         .onChange(of: dojoManager.isLoadingLeaderboard) { isLoading in
             // Check if we can complete initial load when leaderboard finishes loading
+            if !isLoading {
+                checkInitialLoadComplete()
+            }
+        }
+        .onChange(of: dojoManager.isLoadingBalance) { isLoading in
+            // Check if we can complete initial load when balance finishes loading
             if !isLoading {
                 checkInitialLoadComplete()
             }
