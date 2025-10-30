@@ -283,36 +283,108 @@ struct GameRow: View {
         Int(gameModel?.score ?? 0)
     }
     
+    // Game icon view - extracted to reduce type-checking complexity
+    private var gameIconView: some View {
+        ZStack {
+            Circle()
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.3),
+                                    Color.white.opacity(0.1)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.4), lineWidth: 1.5)
+                )
+                .frame(width: 60, height: 60)
+                .shadow(color: Color.purple.opacity(0.3), radius: 8, x: 0, y: 4)
+            
+            Image(systemName: "gamecontroller.fill")
+                .font(.system(size: 24))
+                .foregroundColor(.white)
+        }
+    }
+    
+    // Background styling - extracted to reduce type-checking complexity
+    private var rowBackgroundView: some View {
+        RoundedRectangle(cornerRadius: 20)
+            .fill(.ultraThinMaterial)
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.2),
+                                Color.white.opacity(0.1)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(
+                        Color.white.opacity(0.3),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
+    }
+    
+    // Continue button view - extracted to reduce type-checking complexity
+    private var continueButtonView: some View {
+        Text("Continue")
+            .font(.system(size: 14, weight: .bold))
+            .foregroundColor(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.white.opacity(0.2))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white.opacity(0.4), lineWidth: 1)
+                    )
+            )
+            .lineLimit(1)
+    }
+    
+    // Play button view - extracted to reduce type-checking complexity
+    private var playButtonView: some View {
+        Text("Play")
+            .font(.system(size: 14, weight: .bold))
+            .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(
+                LinearGradient(
+                    colors: [Color.yellow, Color.orange],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .cornerRadius(12)
+            .lineLimit(1)
+    }
+    
     var body: some View {
         HStack(spacing: 16) {
             // Game icon
-            ZStack {
-                Circle()
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.3),
-                                        Color.white.opacity(0.1)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                    )
-                    .overlay(
-                        Circle()
-                            .stroke(Color.white.opacity(0.4), lineWidth: 1.5)
-                    )
-                    .frame(width: 60, height: 60)
-                    .shadow(color: Color.purple.opacity(0.3), radius: 8, x: 0, y: 4)
-                
-                Image(systemName: "gamecontroller.fill")
-                    .font(.system(size: 24))
-                    .foregroundColor(.white)
-            }
+            gameIconView
             
             // Game info
             VStack(alignment: .leading, spacing: 4) {
@@ -336,71 +408,15 @@ struct GameRow: View {
             .environmentObject(sessionManager)
             .navigationBarHidden(true)
             ) {
-                Group {
-                    if hasGameModel {
-                        Text("Continue")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(.ultraThinMaterial)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .fill(Color.white.opacity(0.2))
-                                    )
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color.white.opacity(0.4), lineWidth: 1)
-                                    )
-                            )
-                            .lineLimit(1)
-                    } else {
-                        Text("Play")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4))
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(
-                                LinearGradient(
-                                    colors: [Color.yellow, Color.orange],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                            .cornerRadius(12)
-                            .lineLimit(1)
-                    }
+                if hasGameModel {
+                    continueButtonView
+                } else {
+                    playButtonView
                 }
             }
         }
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.2),
-                                    Color.white.opacity(0.1)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(
-                            Color.white.opacity(0.3),
-                            lineWidth: 1
-                        )
-                )
-                .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
-        )
+        .background(rowBackgroundView)
     }
 }
 
