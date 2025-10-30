@@ -19,10 +19,10 @@ struct AccountConnectedSheet: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 24) {
-                // Success Icon
-                Image(systemName: "checkmark.circle.fill")
+                // Controller Icon
+                Image(systemName: "gamecontroller.fill")
                     .font(.system(size: 70))
-                    .foregroundColor(.green)
+                    .foregroundColor(.white)
                     .padding(.top, 20)
                 
                 // Title
@@ -79,17 +79,17 @@ struct AccountConnectedSheet: View {
                 
                 Spacer()
                 
-                // Continue Button
+                // Continue Button styled like top bar icons
                 Button(action: {
                     dismiss()
                 }) {
                     Text("Continue")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(size: 18, weight: .bold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(Color.green)
-                        .cornerRadius(16)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(12)
                 }
                 .padding(.bottom, 20)
             }
