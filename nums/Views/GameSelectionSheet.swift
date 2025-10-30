@@ -293,6 +293,9 @@ struct GameRow: View {
     @ObservedObject var dojoManager: DojoManager
     @EnvironmentObject var sessionManager: SessionManager
     @State private var showGameView = false
+    @State private var isStartingGame = false
+    @State private var startError: String? = nil
+    @State private var showStartError = false
     
     // Check if a NUMS-Game model exists for this token
     private var hasGameModel: Bool {
@@ -342,39 +345,53 @@ struct GameRow: View {
             
             Spacer()
             
-            // Play/Continue button
+            // Start/Continue button
             Button(action: {
-                print("🎮 \(hasGameModel ? "Continue" : "Start") game: \(game.tokenId)")
-                showGameView = true
+                if hasGameModel {
+                    // Game already started, just open it
+                    print("🎮 Continue game: \(game.tokenId)")
+                    showGameView = true
+                } else {
+                    // Game needs to be started first
+                    print("🎮 Start game: \(game.tokenId)")
+                    startGame()
+                }
             }) {
-                Group {
-                    if hasGameModel {
-                        Text("Continue")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(Color.white.opacity(0.2))
-                            .cornerRadius(12)
-                            .lineLimit(1)
-                    } else {
-                        Text("Play")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4))
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 10)
-                            .background(
-                                LinearGradient(
-                                    colors: [Color.yellow, Color.orange],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                            .cornerRadius(12)
-                            .lineLimit(1)
+                HStack(spacing: 6) {
+                    if isStartingGame {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: hasGameModel ? .white : Color(red: 0.2, green: 0.15, blue: 0.4)))
+                            .scaleEffect(0.8)
+                    }
+                    Group {
+                        if hasGameModel {
+                            Text("Continue")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                        } else {
+                            Text(isStartingGame ? "Starting..." : "Start")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4))
+                        }
                     }
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(
+                    hasGameModel 
+                        ? AnyView(Color.white.opacity(0.2))
+                        : AnyView(
+                            LinearGradient(
+                                colors: [Color.yellow, Color.orange],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                )
+                .cornerRadius(12)
+                .lineLimit(1)
             }
+            .disabled(isStartingGame)
         }
         .padding(16)
         .background(Color.white.opacity(0.1))
@@ -386,6 +403,80 @@ struct GameRow: View {
             )
             .environmentObject(dojoManager)
             .environmentObject(sessionManager)
+        }
+        .overlay(
+            // Start error banner
+            VStack {
+                if showStartError, let error = startError {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white)
+                        Text(error)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                            .lineLimit(2)
+                        Spacer()
+                        Button(action: {
+                            withAnimation(.spring()) {
+                                showStartError = false
+                            }
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.red.opacity(0.9))
+                            .shadow(color: .black.opacity(0.3), radius: 5, x: 0, y: 2)
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            },
+            alignment: .top
+        )
+    }
+    
+    // Start a game (request_random + start)
+    private func startGame() {
+        isStartingGame = true
+        
+        Task {
+            do {
+                // Call the start game function
+                await dojoManager.startGame(
+                    gameId: game.tokenId,
+                    tournamentId: dojoManager.selectedTournament?.id ?? 0,
+                    sessionManager: sessionManager
+                )
+                
+                // Wait a moment for the game to be initialized
+                try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                
+                await MainActor.run {
+                    isStartingGame = false
+                    showGameView = true
+                }
+            } catch {
+                await MainActor.run {
+                    isStartingGame = false
+                    startError = error.localizedDescription
+                    withAnimation(.spring()) {
+                        showStartError = true
+                    }
+                    
+                    // Auto-dismiss after 5 seconds
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                        withAnimation(.spring()) {
+                            showStartError = false
+                        }
+                    }
+                }
+            }
         }
     }
 }
