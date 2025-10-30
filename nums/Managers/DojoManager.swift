@@ -153,7 +153,7 @@ struct GameModel: Identifiable, Equatable {
     
     private func unpackSlotValues(from hexString: String, slotCount: Int) -> [UInt16] {
         // Remove "0x" prefix if present
-        let hex = hexString.hasPrefix("0x") ? String(hexString.dropFirst(2)) : hexString
+        var hex = hexString.hasPrefix("0x") ? String(hexString.dropFirst(2)) : hexString
         
         // Handle empty or zero slots
         if hex.isEmpty || hex.trimmingCharacters(in: CharacterSet(charactersIn: "0")) == "" {
@@ -161,48 +161,62 @@ struct GameModel: Identifiable, Equatable {
             return Array(repeating: 0, count: slotCount)
         }
         
-        // Convert hex string to BInt directly
+        print("   🔢 Unpacking slots: hex=\(hex)")
+        
+        // Reverse byte order (little-endian to big-endian)
+        // Break into byte pairs and reverse
+        var bytes: [String] = []
+        for i in stride(from: 0, to: hex.count, by: 2) {
+            let start = hex.index(hex.startIndex, offsetBy: i)
+            let end = hex.index(start, offsetBy: min(2, hex.count - i))
+            bytes.append(String(hex[start..<end]))
+        }
+        hex = bytes.reversed().joined()
+        print("   🔄 Reversed (little-endian): \(hex)")
+        
+        // Convert hex string to BInt
         guard var packed = BInt(hex, radix: 16) else {
             print("⚠️ Failed to parse slots hex: \(hexString)")
             return Array(repeating: 0, count: slotCount)
         }
         
-        print("   🔢 Unpacking slots: hex=\(hex)")
         print("   📦 Packed value (decimal): \(packed)")
         
-        // Each slot is a u16 (16 bits)
-        let bitsPerSlot = 16
-        print("   🔧 Using \(bitsPerSlot) bits per slot (u16)")
+        // Use variable-length packing with SLOT_SIZE = 1000 as modulo
+        // packed = slot[0] + slot[1]*1000 + slot[2]*1000^2 + ...
+        let slotSize = BInt(1000)
+        print("   🔧 Using variable-length packing with SLOT_SIZE=1000")
         
-        // Create bitmask for u16
-        let slotMask = BInt((1 << bitsPerSlot) - 1)
         var values: [UInt16] = []
         
-        // Calculate total bits in the hex
-        let hexBits = hex.count * 4 // Each hex digit is 4 bits
+        print("   📋 Extracting slot values (index 0 → 19):")
         
-        print("   📏 Hex bits: \(hexBits), Slots need: \(slotCount * bitsPerSlot) bits")
-        print("   📋 Extracting slot values (slot 20 → slot 1):")
-        
-        // Extract each slot by shifting and masking
-        // Slots are packed from HIGH to LOW: slot 20 at MSB, slot 1 at LSB
-        for slotIndex in 0..<slotCount {
-            let slotNumber = slotCount - slotIndex // 20, 19, 18, ..., 1
+        // Extract each slot using modulo and division
+        // slot[0] is extracted first, slot[19] last
+        for index in 0..<slotCount {
+            // Extract current value: packed % slotSize
+            let value = packed % slotSize
             
-            // Calculate bit position from the RIGHT (LSB = bit 0)
-            let bitShift = (hexBits - (slotIndex + 1) * bitsPerSlot)
-            
-            // Shift right to bring this slot's bits to the bottom, then mask
-            let slotValue = (packed >> bitShift) & slotMask
-            
-            if let intValue = slotValue.asInt(), intValue >= 0 && intValue <= 65535 {
-                let value = UInt16(intValue)
-                values.append(value)
-                if value > 0 {
-                    print("      Slot \(slotNumber): \(value) ✓")
+            if let intValue = value.asInt(), intValue >= 0 && intValue <= 999 {
+                let slotValue = UInt16(intValue)
+                values.append(slotValue)
+                if slotValue > 0 {
+                    print("      Slot \(index + 1): \(slotValue) ✓")
                 }
             } else {
                 values.append(0)
+            }
+            
+            // Shift to next value: packed / slotSize
+            packed = packed / slotSize
+            
+            // Early exit if packed becomes 0 (no more data)
+            if packed == 0 {
+                // Fill remaining slots with 0
+                while values.count < slotCount {
+                    values.append(0)
+                }
+                break
             }
         }
         
