@@ -94,6 +94,12 @@ struct PlayerLeaderboard: Identifiable {
     let games: [Game]
 }
 
+// Helper struct for SQL query results
+struct GameData {
+    let tokenId: String
+    let score: UInt32
+}
+
 // Game Model (NUMS-Game entity)
 struct GameModel: Identifiable {
     let id: String // token_id as string
@@ -201,6 +207,9 @@ class DojoManager: ObservableObject {
     private var tokenBalanceSubscriptionId: UInt64?
     private var gameSubscriptions: [String: UInt64] = [:] // game_id -> subscription_id
     
+    // Polling timer for leaderboard
+    private var leaderboardTimer: Timer?
+    
     // Error handling
     @Published var errorMessage: String?
     
@@ -232,18 +241,17 @@ class DojoManager: ObservableObject {
                 }
             }
             
-            // Fetch leaderboard for selected tournament
-            if selectedTournament != nil {
-                await fetchLeaderboard(for: selectedTournament!.id)
-            }
-            
-            // Fetch all games for player leaderboard
-            await fetchAllGames()
-            
             // Start subscriptions
             await subscribeTournaments()
+            
+            // Fetch leaderboard using SQL
             if let tournamentId = selectedTournament?.id {
-                await subscribeLeaderboard(for: tournamentId)
+                await fetchLeaderboardSQL(tournamentId: tournamentId)
+                
+                // Start polling timer for leaderboard updates (every 3 seconds)
+                await MainActor.run {
+                    self.startLeaderboardPolling(tournamentId: tournamentId)
+                }
             }
         } catch {
             await MainActor.run {
@@ -260,11 +268,19 @@ class DojoManager: ObservableObject {
             self.showTournamentSelector = false
         }
         
-        // Refetch leaderboard for the new tournament
-        await fetchLeaderboard(for: tournament.id)
+        // Stop existing polling
+        await MainActor.run {
+            self.leaderboardTimer?.invalidate()
+            self.leaderboardTimer = nil
+        }
         
-        // Update subscription
-        await subscribeLeaderboard(for: tournament.id)
+        // Fetch leaderboard using SQL for the new tournament
+        await fetchLeaderboardSQL(tournamentId: tournament.id)
+        
+        // Restart polling for new tournament
+        await MainActor.run {
+            self.startLeaderboardPolling(tournamentId: tournament.id)
+        }
     }
     
     func fetchAllTournaments() async {
@@ -312,6 +328,150 @@ class DojoManager: ObservableObject {
             }
         }
     }
+    
+    // MARK: - SQL-Based Leaderboard
+    
+    func fetchLeaderboardSQL(tournamentId: Int) async {
+        guard let client = toriiClient else {
+            print("⚠️ Torii client not initialized")
+            return
+        }
+        
+        await MainActor.run {
+            self.isLoadingPlayerLeaderboard = true
+        }
+        
+        do {
+            print("📊 Fetching leaderboard via SQL for tournament #\(tournamentId)...")
+            
+            // SQL query to get player leaderboard with game counts and usernames
+            let query = """
+            SELECT 
+                g.external_token_id as token_id,
+                g.external_owner as owner,
+                g.external_tournament_id as tournament_id,
+                g.external_score as score,
+                c.username as username
+            FROM 
+                nums_Game g
+            LEFT JOIN 
+                controller_controllers c ON g.external_owner = c.id
+            WHERE 
+                g.external_tournament_id = '\(tournamentId)'
+            ORDER BY 
+                g.external_score DESC
+            """
+            
+            let rows = try client.sql(query: query)
+            print("📦 SQL returned \(rows.count) rows")
+            
+            // Group by player and aggregate
+            var playerGames: [String: [GameData]] = [:]
+            
+            for row in rows {
+                var owner: String?
+                var tokenId: String?
+                var score: UInt32 = 0
+                var username: String?
+                
+                for field in row.fields {
+                    switch field.name {
+                    case "owner":
+                        if case .text(let value) = field.value {
+                            owner = value
+                        }
+                    case "token_id":
+                        if case .text(let value) = field.value {
+                            tokenId = value
+                        }
+                    case "score":
+                        if case .integer(let value) = field.value {
+                            score = UInt32(value)
+                        }
+                    case "username":
+                        if case .text(let value) = field.value {
+                            username = value
+                        }
+                    default:
+                        break
+                    }
+                }
+                
+                if let owner = owner, let tokenId = tokenId {
+                    let gameData = GameData(tokenId: tokenId, score: score)
+                    playerGames[owner, default: []].append(gameData)
+                    
+                    // Cache username for this player
+                    if username != nil {
+                        usernameCache[owner] = username
+                    }
+                }
+            }
+            
+            // Build player leaderboard
+            var players: [PlayerLeaderboard] = []
+            for (address, games) in playerGames {
+                let totalScore = games.reduce(0) { $0 + Int($1.score) }
+                let player = PlayerLeaderboard(
+                    id: address,
+                    address: address,
+                    username: usernameCache[address],
+                    gameCount: games.count,
+                    games: games.map { Game(
+                        id: $0.tokenId,
+                        tokenId: $0.tokenId,
+                        contractAddress: Constants.gameAddress,
+                        balance: "1",
+                        accountAddress: address
+                    )}
+                )
+                players.append(player)
+            }
+            
+            // Sort by total score
+            players.sort { player1, player2 in
+                let score1 = player1.games.reduce(0) { total, game in
+                    total + Int(gameModels[game.tokenId]?.score ?? 0)
+                }
+                let score2 = player2.games.reduce(0) { total, game in
+                    total + Int(gameModels[game.tokenId]?.score ?? 0)
+                }
+                return score1 > score2
+            }
+            
+            await MainActor.run {
+                self.playerLeaderboard = players
+                self.isLoadingPlayerLeaderboard = false
+                print("✅ SQL Leaderboard loaded: \(players.count) players")
+            }
+            
+        } catch {
+            await MainActor.run {
+                self.errorMessage = "Failed to fetch leaderboard: \(error.localizedDescription)"
+                self.isLoadingPlayerLeaderboard = false
+                print("❌ SQL Leaderboard error: \(error)")
+            }
+        }
+    }
+    
+    private var usernameCache: [String: String?] = [:]
+    
+    private func startLeaderboardPolling(tournamentId: Int) {
+        // Cancel existing timer
+        leaderboardTimer?.invalidate()
+        
+        // Create timer that runs every 3 seconds
+        leaderboardTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            Task {
+                await self.fetchLeaderboardSQL(tournamentId: tournamentId)
+            }
+        }
+        
+        print("⏰ Started leaderboard polling (every 3s)")
+    }
+    
+    // MARK: - Old Leaderboard (deprecated, kept for reference)
     
     func fetchLeaderboard(for tournamentId: Int) async {
         guard let client = toriiClient else {
@@ -803,6 +963,7 @@ class DojoManager: ObservableObject {
                 self.isLoadingGameModels = false
                 print("✅ Game models loaded: \(modelsMap.count) models")
             }
+            
         } catch {
             await MainActor.run {
                 self.errorMessage = "Failed to fetch game models: \(error.localizedDescription)"
@@ -1350,7 +1511,7 @@ class DojoManager: ObservableObject {
         }
     }
     
-    // MARK: - Game Subscription
+    // MARK: - Game Subscription (Per-Game)
     
     func subscribeToGame(_ gameId: String) async {
         guard let client = toriiClient else {
@@ -1369,12 +1530,9 @@ class DojoManager: ObservableObject {
         do {
             // Build clause to match the specific game entity
             // NUMS-Game entity has keys: [game_id]
-            let gameIdU256 = gameId // tokenId is already a string
-            
-            // Create a clause to match entities with this token ID
             let keyClause = HashedKeysClause(
                 modelId: "NUMS-Game",
-                keys: [gameIdU256]
+                keys: [gameId]
             )
             
             let clause = Clause.hashedKeys(keyClause)
@@ -1389,8 +1547,8 @@ class DojoManager: ObservableObject {
                 if let updatedModel = self.parseGameModel(from: entity) {
                     Task { @MainActor in
                         // Update the game model in our dictionary
-                        self.gameModels[gameId] = updatedModel
-                        print("✅ Game model updated: score=\(updatedModel.score), number=\(updatedModel.number)")
+                        self.gameModels[updatedModel.id] = updatedModel
+                        print("✅ Game model updated: #\(updatedModel.id) - score=\(updatedModel.score), number=\(updatedModel.number)")
                     }
                 }
             }

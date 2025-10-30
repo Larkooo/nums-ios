@@ -123,7 +123,7 @@ struct GameView: View {
         }
         .navigationBarHidden(true)
         .onAppear {
-            // Subscribe to game updates
+            // Subscribe to this specific game
             Task {
                 await dojoManager.subscribeToGame(gameTokenId)
             }
@@ -140,7 +140,7 @@ struct GameView: View {
             }
         }
         .onDisappear {
-            // Unsubscribe from game updates
+            // Unsubscribe from this game
             Task {
                 await dojoManager.unsubscribeFromGame(gameTokenId)
             }
