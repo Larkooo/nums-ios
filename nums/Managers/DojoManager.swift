@@ -795,62 +795,46 @@ class DojoManager: ObservableObject {
         do {
             print("🔔 Subscribing to tournament updates...")
             
-            // Create subscription query for tournaments
-            let query = Query(
+            // Create callback for tournament updates
+            let callback = EntityCallback { [weak self] entity in
+                guard let self = self else { return }
+                
+                print("🏆 Tournament entity update received")
+                
+                // Parse the updated tournament
+                if let updatedTournament = self.parseTournament(from: entity) {
+                    Task { @MainActor in
+                        // Update tournament in list
+                        if let index = self.tournaments.firstIndex(where: { $0.id == updatedTournament.id }) {
+                            self.tournaments[index] = updatedTournament
+                            
+                            // Update selected tournament if it matches
+                            if self.selectedTournament?.id == updatedTournament.id {
+                                self.selectedTournament = updatedTournament
+                            }
+                        } else {
+                            // New tournament, add to list
+                            self.tournaments.append(updatedTournament)
+                        }
+                        print("✅ Tournament updated: #\(updatedTournament.id)")
+                    }
+                }
+            }
+            
+            // Subscribe to all NUMS-Tournament entities
+            let subscriptionId = try client.subscribeEntityUpdates(
+                clause: nil, // No filter - subscribe to all tournaments
                 worldAddresses: [],
-                pagination: Pagination(
-                    cursor: nil,
-                    limit: 100,
-                    direction: .forward,
-                    orderBy: []
-                ),
-                clause: nil,
-                noHashedKeys: false,
-                models: ["NUMS-Tournament"],
-                historical: false
+                callback: callback
             )
             
-            // TODO: Implement subscription when available in the SDK
-            // tournamentSubscriptionId = try await client.subscribe(query: query)
-            
-            print("✅ Subscribed to tournaments")
+            tournamentSubscriptionId = subscriptionId
+            print("✅ Subscribed to tournaments (ID: \(subscriptionId))")
         } catch {
             print("❌ Tournament subscription error: \(error)")
         }
     }
     
-    private func subscribeLeaderboard(for tournamentId: Int) async {
-        guard let client = toriiClient else {
-            print("⚠️ Torii client not initialized for subscription")
-            return
-        }
-        
-        do {
-            print("🔔 Subscribing to leaderboard updates for tournament #\(tournamentId)...")
-            
-            // Create subscription query for leaderboard
-            let query = Query(
-                worldAddresses: [],
-                pagination: Pagination(
-                    cursor: nil,
-                    limit: 100,
-                    direction: .forward,
-                    orderBy: []
-                ),
-                clause: nil,
-                noHashedKeys: false,
-                models: ["NUMS-Leaderboard"],
-                historical: false
-            )
-            
-            // TODO: Implement subscription when available in the SDK
-            // leaderboardSubscriptionId = try await client.subscribe(query: query)
-            
-            print("✅ Subscribed to leaderboard for tournament #\(tournamentId)")
-        } catch {
-            print("❌ Leaderboard subscription error: \(error)")
-        }
-    }
     
     // MARK: - Game Management
     
@@ -1085,12 +1069,22 @@ class DojoManager: ObservableObject {
     }
     
     func unsubscribeFromGame(_ gameId: String) async {
-        // Note: ToriiClient doesn't have an unsubscribe method yet
-        // Subscriptions will remain active for now
-        // Remove from tracking to prevent duplicate subscriptions
-        if gameSubscriptions[gameId] != nil {
+        guard let client = toriiClient else {
+            print("⚠️ Torii client not initialized")
+            return
+        }
+        
+        guard let subscriptionId = gameSubscriptions[gameId] else {
+            print("ℹ️ No active subscription for game \(gameId)")
+            return
+        }
+        
+        do {
+            try client.cancelSubscription(subscriptionId: subscriptionId)
             gameSubscriptions.removeValue(forKey: gameId)
-            print("ℹ️ Removed game #\(gameId) from subscription tracking")
+            print("✅ Unsubscribed from game #\(gameId)")
+        } catch {
+            print("❌ Failed to unsubscribe from game: \(error.localizedDescription)")
         }
     }
     
