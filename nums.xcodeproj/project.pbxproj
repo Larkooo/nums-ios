@@ -8,9 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		CD52CB752EB26BD10077D39E /* dojo_uniffi.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = CD52CB742EB26BD10077D39E /* dojo_uniffi.xcframework */; };
-		CD52CB762EB26BD10077D39E /* dojo_uniffi.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = CD52CB742EB26BD10077D39E /* dojo_uniffi.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		CD52CB792EB26BE40077D39E /* controller_uniffi.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = CD52CB782EB26BE40077D39E /* controller_uniffi.xcframework */; };
-		CD52CB7A2EB26BE40077D39E /* controller_uniffi.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = CD52CB782EB26BE40077D39E /* controller_uniffi.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -37,8 +35,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				CD52CB7A2EB26BE40077D39E /* controller_uniffi.xcframework in Embed Frameworks */,
-				CD52CB762EB26BD10077D39E /* dojo_uniffi.xcframework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;

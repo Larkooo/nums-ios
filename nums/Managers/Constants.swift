@@ -38,6 +38,14 @@ struct Constants {
     static let worldAddress = "0x04aebc039a9beb576533eca4075bacdc037b3c7160de6ed1e2e1a3005129a29e"
     static let namespace = "NUMS"
     
+    // MARK: - Game Configuration
+    
+    // Cost to buy a new game in NUMS tokens (without decimals)
+    static let gameCostNums: UInt64 = 2000
+    // Hex representation of 2000 * 10^18 = 0x6C6B935B8BBD400000
+    static let gameCostHexLow = "0x6C6B935B8BBD400000"
+    static let gameCostHexHigh = "0x0"
+    
     // MARK: - Session Policies
     
     struct SessionPolicyConfig {
@@ -59,7 +67,7 @@ struct Constants {
         // Game Contract
         SessionPolicyConfig(
             contractAddress: gameAddress,
-            methods: ["start", "set"]
+            methods: ["buy", "start", "set"]
         )
     ]
 }

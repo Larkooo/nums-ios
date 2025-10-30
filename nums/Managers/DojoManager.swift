@@ -1103,6 +1103,109 @@ class DojoManager: ObservableObject {
         )
     }
     
+    // Buy a new game (approve + buy + request_random + start)
+    func buyGame(username: String, tournamentId: UInt64, sessionManager: SessionManager) async throws -> String {
+        print("🛒 Buying new game for username: \(username)")
+        
+        guard let session = sessionManager.sessionAccount else {
+            print("❌ No session account available")
+            throw NSError(domain: "DojoManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No active session. Please reconnect your wallet."])
+        }
+        
+        // Convert username to felt252
+        let usernameFelt = try shortStringToFelt(username)
+        let tournamentIdFelt = String(format: "0x%llx", tournamentId)
+        
+        // Use constants for game cost
+        let approvalAmountLow = Constants.gameCostHexLow
+        let approvalAmountHigh = Constants.gameCostHexHigh
+        
+        print("   💰 Approving \(Constants.gameCostNums) NUMS tokens")
+        print("   🏆 Tournament ID: \(tournamentIdFelt)")
+        
+        // Step 1: Approve NUMS tokens for game contract
+        let approveCall = Call(
+            contractAddress: Constants.numsAddress,
+            entrypoint: "approve",
+            calldata: [
+                Constants.gameAddress,  // spender
+                approvalAmountLow,      // amount.low
+                approvalAmountHigh      // amount.high
+            ]
+        )
+        
+        // Step 2: Buy the game
+        let buyCall = Call(
+            contractAddress: Constants.gameAddress,
+            entrypoint: "buy",
+            calldata: [usernameFelt]
+        )
+        
+        // Execute approve + buy
+        print("   📝 Submitting approve + buy transaction...")
+        do {
+            let txHash = try session.executeFromOutside(calls: [approveCall, buyCall])
+            print("✅ Game purchased! Transaction: \(txHash)")
+            
+            // Wait a moment for the transaction to be processed
+            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            
+            // Fetch the newly created game token for this user
+            print("   🔍 Fetching new game token...")
+            await fetchUserGames()
+            
+            // Find the most recent game token (highest ID)
+            guard let latestGameId = games.keys.sorted(by: { $0 > $1 }).first else {
+                throw NSError(domain: "DojoManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to find newly created game"])
+            }
+            
+            print("   🎮 New game ID: \(latestGameId)")
+            
+            // Step 3: Request random + start the game
+            let gameIdFelt = latestGameId
+            
+            let vrfCall = Call(
+                contractAddress: Constants.vrfAddress,
+                entrypoint: "request_random",
+                calldata: [
+                    Constants.gameAddress,  // caller: the game contract
+                    "0x0",                  // source type: 0 = Nonce
+                    Constants.gameAddress   // source data: game contract address for Nonce
+                ]
+            )
+            
+            let startCall = Call(
+                contractAddress: Constants.gameAddress,
+                entrypoint: "start",
+                calldata: [gameIdFelt, tournamentIdFelt]
+            )
+            
+            print("   🎲 Starting game with random number...")
+            let startTxHash = try session.executeFromOutside(calls: [vrfCall, startCall])
+            print("✅ Game started! Transaction: \(startTxHash)")
+            
+            // Subscribe to the new game
+            await subscribeToGame(latestGameId)
+            
+            return latestGameId
+            
+        } catch {
+            print("❌ Failed to buy game: \(error)")
+            let errorMessage = extractErrorMessage(from: error)
+            throw NSError(domain: "DojoManager", code: 3, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+        }
+    }
+    
+    // Helper to convert short string to felt252
+    private func shortStringToFelt(_ string: String) throws -> String {
+        // Convert ASCII string to felt252 (Cairo short string)
+        var felt: UInt64 = 0
+        for char in string.prefix(31) {  // Max 31 characters
+            felt = felt * 256 + UInt64(char.asciiValue ?? 0)
+        }
+        return String(format: "0x%llx", felt)
+    }
+    
     func setGameSlot(gameId: String, slot: UInt8, sessionManager: SessionManager) async throws {
         print("🎮 Setting slot #\(slot) for game #\(gameId)")
         

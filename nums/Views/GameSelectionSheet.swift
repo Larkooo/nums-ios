@@ -5,6 +5,11 @@ struct GameSelectionSheet: View {
     @EnvironmentObject var sessionManager: SessionManager
     @Environment(\.dismiss) var dismiss
     @State private var currentTime = Date()
+    @State private var isBuyingGame = false
+    @State private var showNewGameView = false
+    @State private var newGameId: String? = nil
+    @State private var buyError: String? = nil
+    @State private var showBuyError = false
     
     // User's games (already filtered by fetchUserGames)
     private var userGames: [Game] {
@@ -78,22 +83,30 @@ struct GameSelectionSheet: View {
                     
                     // Play with Nums - 2000 NUMS (Active)
                     Button(action: {
-                        // TODO: Play with NUMS action
+                        buyNewGame()
                     }) {
-                        Text("2000 Nums")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(
-                                LinearGradient(
-                                    colors: [Color.yellow, Color.orange],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
+                        HStack(spacing: 6) {
+                            if isBuyingGame {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: Color(red: 0.2, green: 0.15, blue: 0.4)))
+                                    .scaleEffect(0.8)
+                            }
+                            Text(isBuyingGame ? "Buying..." : "\(Constants.gameCostNums) Nums")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.yellow, Color.orange],
+                                startPoint: .top,
+                                endPoint: .bottom
                             )
-                            .cornerRadius(12)
+                        )
+                        .cornerRadius(12)
                     }
+                    .disabled(isBuyingGame)
                     
                     // Play with USD - $1.13
                     Button(action: {
@@ -171,6 +184,106 @@ struct GameSelectionSheet: View {
         .onDisappear {
             // Resume leaderboard polling when returning to main view
             dojoManager.resumeLeaderboardPolling()
+        }
+        .fullScreenCover(isPresented: $showNewGameView) {
+            if let gameId = newGameId {
+                GameView(
+                    gameTokenId: gameId,
+                    isNewGame: true
+                )
+                .environmentObject(dojoManager)
+                .environmentObject(sessionManager)
+            }
+        }
+        .overlay(
+            // Buy error banner
+            VStack {
+                if showBuyError, let error = buyError {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.white)
+                        Text(error)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                            .lineLimit(2)
+                        Spacer()
+                        Button(action: {
+                            withAnimation(.spring()) {
+                                showBuyError = false
+                            }
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.red.opacity(0.9))
+                            .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                    )
+                    .padding(.horizontal, 20)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    
+                    Spacer()
+                }
+            }
+            .padding(.top, 60)
+        )
+    }
+    
+    // Buy a new game
+    private func buyNewGame() {
+        guard let username = sessionManager.sessionUsername else {
+            buyError = "No username found. Please reconnect your wallet."
+            withAnimation(.spring()) {
+                showBuyError = true
+            }
+            return
+        }
+        
+        guard let tournament = dojoManager.selectedTournament else {
+            buyError = "No tournament selected"
+            withAnimation(.spring()) {
+                showBuyError = true
+            }
+            return
+        }
+        
+        isBuyingGame = true
+        
+        Task {
+            do {
+                let gameId = try await dojoManager.buyGame(
+                    username: username,
+                    tournamentId: tournament.id,
+                    sessionManager: sessionManager
+                )
+                
+                await MainActor.run {
+                    isBuyingGame = false
+                    newGameId = gameId
+                    showNewGameView = true
+                }
+            } catch {
+                await MainActor.run {
+                    isBuyingGame = false
+                    buyError = error.localizedDescription
+                    withAnimation(.spring()) {
+                        showBuyError = true
+                    }
+                    
+                    // Auto-dismiss after 5 seconds
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                        withAnimation(.spring()) {
+                            showBuyError = false
+                        }
+                    }
+                }
+            }
         }
     }
 }
