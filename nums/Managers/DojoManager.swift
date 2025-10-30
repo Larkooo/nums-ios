@@ -1126,8 +1126,8 @@ class DojoManager: ObservableObject {
                 tokenIds: tokenIds,
                 attributeFilters: [
                     AttributeFilter(
-                        attributeName: "Minted By",
-                        attributeValue: Constants.gameAddress
+                        traitName: "Minted By",
+                        traitValue: Constants.gameAddress
                     )
                 ],
                 pagination: Pagination(
