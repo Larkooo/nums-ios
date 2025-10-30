@@ -431,23 +431,23 @@ struct MainView: View {
                     .padding(.vertical, 12)
                     
                     // Entries
-                    ScrollView {
-                        LazyVStack(spacing: 8) {
-                            // Show loading indicator on first load
-                            if dojoManager.isLoadingLeaderboard && leaderboard.isEmpty {
-                                VStack(spacing: 16) {
-                                    ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                        .scaleEffect(1.5)
-                                    Text("Loading leaderboard...")
-                                        .font(.system(size: 16, weight: .medium))
-                                        .foregroundColor(.white.opacity(0.7))
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 40)
-                            }
-                            
-                            ForEach(leaderboard) { entry in
+                    if dojoManager.isLoadingLeaderboard && leaderboard.isEmpty {
+                        // Show loading indicator on first load (centered in leaderboard area)
+                        VStack(spacing: 16) {
+                            Spacer()
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(1.5)
+                            Text("Loading leaderboard...")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white.opacity(0.7))
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 8) {
+                                ForEach(leaderboard) { entry in
                                 HStack {
                                     Text("\(entry.rank)")
                                         .font(.system(size: 18, weight: .bold, design: .rounded))
@@ -507,6 +507,7 @@ struct MainView: View {
                                     .padding(.bottom, 20)
                             }
                         }
+                    }
                     }
                 }
                 .frame(maxHeight: .infinity)
