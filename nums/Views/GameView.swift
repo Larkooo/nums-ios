@@ -25,6 +25,9 @@ struct GameView: View {
     @State private var selectedSlot: Int? = nil
     @State private var errorMessage: String? = nil
     @State private var showError = false
+    @State private var isSpinning = false
+    @State private var spinningNumber: UInt16 = 0
+    @State private var optimisticSlotValues: [Int: UInt16] = [:] // slot number -> value
     
     var body: some View {
         ZStack {
@@ -56,26 +59,57 @@ struct GameView: View {
                 .padding(.top, 16)
                 
                 // Current Number Display
-                VStack(spacing: 6) {
-                    Text("YOUR NUMBER IS...")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(.white.opacity(0.6))
-                        .tracking(2)
+                ZStack {
+                    // Pulsing glow effect
+                    if currentNumber > 0 || isSpinning {
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [
+                                        Color.purple.opacity(0.4),
+                                        Color.purple.opacity(0.2),
+                                        Color.clear
+                                    ],
+                                    center: .center,
+                                    startRadius: 0,
+                                    endRadius: 80
+                                )
+                            )
+                            .frame(width: 160, height: 160)
+                            .scaleEffect(isSpinning ? 1.2 : 1.0)
+                            .opacity(isSpinning ? 0.8 : 0.5)
+                            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isSpinning)
+                    }
                     
-                    if currentNumber > 0 {
-                        Text("\(currentNumber)")
-                            .font(.system(size: 56, weight: .black, design: .rounded))
-                            .foregroundColor(.white)
-                            .shadow(color: .purple.opacity(0.6), radius: 10, x: 0, y: 3)
-                            .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 2)
-                    } else if isNewGame {
-                        Text("START")
-                            .font(.system(size: 28, weight: .black, design: .rounded))
-                            .foregroundColor(.white.opacity(0.5))
-                    } else {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(1.2)
+                    VStack(spacing: 6) {
+                        Text("YOUR NUMBER IS...")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.6))
+                            .tracking(2)
+                        
+                        if isSpinning {
+                            Text("\(spinningNumber)")
+                                .font(.system(size: 56, weight: .black, design: .rounded))
+                                .foregroundColor(.white)
+                                .shadow(color: .purple.opacity(0.6), radius: 10, x: 0, y: 3)
+                                .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 2)
+                                .transition(.opacity)
+                        } else if currentNumber > 0 {
+                            Text("\(currentNumber)")
+                                .font(.system(size: 56, weight: .black, design: .rounded))
+                                .foregroundColor(.white)
+                                .shadow(color: .purple.opacity(0.6), radius: 10, x: 0, y: 3)
+                                .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 2)
+                                .transition(.scale.combined(with: .opacity))
+                        } else if isNewGame {
+                            Text("START")
+                                .font(.system(size: 28, weight: .black, design: .rounded))
+                                .foregroundColor(.white.opacity(0.5))
+                        } else {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(1.2)
+                        }
                     }
                 }
                 .frame(height: 75)
@@ -91,7 +125,8 @@ struct GameView: View {
                             // Left column
                             SlotButton(
                                 slotNumber: row + 1,
-                                slotValue: slotValues.indices.contains(row) ? slotValues[row] : 0,
+                                slotValue: optimisticSlotValues[row + 1] ?? (slotValues.indices.contains(row) ? slotValues[row] : 0),
+                                isOptimistic: optimisticSlotValues[row + 1] != nil,
                                 isDisabled: isGameOver || isSettingSlot,
                                 action: {
                                     setSlot(row + 1)
@@ -102,7 +137,8 @@ struct GameView: View {
                             // Right column
                             SlotButton(
                                 slotNumber: row + 11,
-                                slotValue: slotValues.indices.contains(row + 10) ? slotValues[row + 10] : 0,
+                                slotValue: optimisticSlotValues[row + 11] ?? (slotValues.indices.contains(row + 10) ? slotValues[row + 10] : 0),
+                                isOptimistic: optimisticSlotValues[row + 11] != nil,
                                 isDisabled: isGameOver || isSettingSlot,
                                 action: {
                                     setSlot(row + 11)
@@ -298,7 +334,9 @@ struct GameView: View {
     
     // Helper function to load model data into state
     private func loadModelData(_ model: GameModel) {
-        currentNumber = model.number
+        withAnimation(.spring()) {
+            currentNumber = model.number
+        }
         nextNumber = model.nextNumber
         gameLevel = model.level
         powers = model.powers
@@ -310,6 +348,16 @@ struct GameView: View {
         isGameOver = model.over
         setSlots = model.setSlots
         slotValues = model.slotValues
+        
+        // Clear optimistic values now that real data has arrived
+        // Remove optimistic values for slots that now have real values
+        for slotNum in optimisticSlotValues.keys {
+            if setSlots.contains(slotNum) {
+                withAnimation(.spring()) {
+                    optimisticSlotValues.removeValue(forKey: slotNum)
+                }
+            }
+        }
         
         // Clear loading state if we were setting a slot
         if isSettingSlot {
@@ -351,6 +399,12 @@ struct GameView: View {
         
         print("✅ Setting slot #\(slotNumber) for game \(gameTokenId) with number \(currentNumber)")
         
+        // Start roulette spinning animation
+        startRouletteAnimation()
+        
+        // Optimistically set the slot value
+        optimisticSlotValues[slotNumber] = currentNumber
+        
         Task {
             do {
                 try await dojoManager.setGameSlot(
@@ -360,10 +414,25 @@ struct GameView: View {
                 )
                 
                 // Game state will update automatically via subscription
-                // No need to manually reload
+                // Stop spinning after a short delay to show the result
+                await MainActor.run {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.spring()) {
+                            self.isSpinning = false
+                        }
+                    }
+                }
             } catch {
                 // Show error banner
                 await MainActor.run {
+                    // Stop spinning
+                    withAnimation(.spring()) {
+                        isSpinning = false
+                    }
+                    
+                    // Remove optimistic value
+                    optimisticSlotValues.removeValue(forKey: slotNumber)
+                    
                     errorMessage = error.localizedDescription
                     withAnimation(.spring()) {
                         showError = true
@@ -383,14 +452,37 @@ struct GameView: View {
             }
         }
     }
+    
+    // Roulette animation - rapidly cycles through random numbers
+    private func startRouletteAnimation() {
+        isSpinning = true
+        spinningNumber = currentNumber
+        
+        var count = 0
+        Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { timer in
+            count += 1
+            
+            if count > 20 {
+                // Slow down and stop at current number
+                timer.invalidate()
+                self.spinningNumber = self.currentNumber
+            } else {
+                // Generate random number in slot range
+                self.spinningNumber = UInt16.random(in: self.slotMin...self.slotMax)
+            }
+        }
+    }
 }
 
 // Slot Button Component
 struct SlotButton: View {
     let slotNumber: Int
     let slotValue: UInt16
+    let isOptimistic: Bool
     let isDisabled: Bool
     let action: () -> Void
+    
+    @State private var pulseAnimation = false
     
     var isSet: Bool {
         slotValue > 0
@@ -421,6 +513,8 @@ struct SlotButton: View {
                     .frame(width: 58)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
+                    .scaleEffect(isOptimistic && pulseAnimation ? 1.1 : 1.0)
+                    .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: pulseAnimation)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 38)
@@ -428,7 +522,9 @@ struct SlotButton: View {
                 Group {
                     if isSet {
                         LinearGradient(
-                            colors: [Color.green.opacity(0.7), Color.green.opacity(0.5)],
+                            colors: isOptimistic 
+                                ? [Color.yellow.opacity(0.8), Color.orange.opacity(0.6)]
+                                : [Color.green.opacity(0.7), Color.green.opacity(0.5)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -447,7 +543,9 @@ struct SlotButton: View {
                     .stroke(
                         LinearGradient(
                             colors: isSet
-                                ? [Color.green.opacity(0.6), Color.green.opacity(0.3)]
+                                ? (isOptimistic 
+                                    ? [Color.yellow.opacity(0.8), Color.orange.opacity(0.4)]
+                                    : [Color.green.opacity(0.6), Color.green.opacity(0.3)])
                                 : [Color.white.opacity(0.3), Color.white.opacity(0.1)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -455,10 +553,29 @@ struct SlotButton: View {
                         lineWidth: 1.5
                     )
             )
-            .shadow(color: isSet ? Color.green.opacity(0.3) : Color.black.opacity(0.2), radius: isSet ? 5 : 2, x: 0, y: 1.5)
+            .shadow(
+                color: isSet 
+                    ? (isOptimistic ? Color.orange.opacity(0.5) : Color.green.opacity(0.3))
+                    : Color.black.opacity(0.2), 
+                radius: isSet ? (isOptimistic ? 8 : 5) : 2, 
+                x: 0, 
+                y: 1.5
+            )
         }
-        .disabled(isDisabled || isSet)
+        .disabled(isDisabled || (isSet && !isOptimistic))
         .buttonStyle(ScaleButtonStyle())
+        .onChange(of: isOptimistic) { newValue in
+            if newValue {
+                pulseAnimation = true
+            } else {
+                pulseAnimation = false
+            }
+        }
+        .onAppear {
+            if isOptimistic {
+                pulseAnimation = true
+            }
+        }
     }
 }
 
