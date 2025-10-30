@@ -821,9 +821,17 @@ class DojoManager: ObservableObject {
                 }
             }
             
+            // Create keys clause to filter for NUMS-Tournament model only
+            let keysClause = KeysClause(
+                keys: [],
+                patternMatching: .variableLen,
+                models: ["NUMS-Tournament"]
+            )
+            let clause = Clause.keys(clause: keysClause)
+            
             // Subscribe to all NUMS-Tournament entities
             let subscriptionId = try client.subscribeEntityUpdates(
-                clause: nil, // No filter - subscribe to all tournaments
+                clause: clause,
                 worldAddresses: [],
                 callback: callback
             )
@@ -1035,8 +1043,12 @@ class DojoManager: ObservableObject {
         do {
             // Build clause to match the specific game entity
             // NUMS-Game entity has keys: [game_id]
-            // Use hashedKeys with the game ID as the key
-            let clause = Clause.hashedKeys(keys: [gameId])
+            let keysClause = KeysClause(
+                keys: [gameId],
+                patternMatching: .variableLen,
+                models: ["NUMS-Game"]
+            )
+            let clause = Clause.keys(clause: keysClause)
             
             // Subscribe with callback
             let callback = EntityCallback { [weak self] entity in
