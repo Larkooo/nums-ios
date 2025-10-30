@@ -1130,6 +1130,7 @@ class DojoManager: ObservableObject {
             let errorMessage = extractErrorMessage(from: error)
             throw NSError(domain: "DojoManager", code: 2, userInfo: [NSLocalizedDescriptionKey: errorMessage])
         }
+    }
     
     // Buy a new game (approve + buy + request_random + start)
     func buyGame(username: String, tournamentId: UInt64, sessionManager: SessionManager) async throws -> String {
