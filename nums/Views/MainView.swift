@@ -345,8 +345,8 @@ struct MainView: View {
                             }
                         }
                         
-                        // Stats Row - Icons on left
-                        HStack(spacing: 0) {
+                        // Stats Row - Aligned with title and timer above
+                        HStack(spacing: 16) {
                             // Entries
                             HStack(spacing: 8) {
                                 Image(systemName: "person.2.fill")
@@ -362,11 +362,6 @@ struct MainView: View {
                                         .foregroundColor(.white.opacity(0.6))
                                 }
                             }
-                            .frame(maxWidth: .infinity)
-                            
-                            Divider()
-                                .frame(width: 1, height: 40)
-                                .background(Color.white.opacity(0.2))
                             
                             // Duration
                             HStack(spacing: 8) {
@@ -383,13 +378,10 @@ struct MainView: View {
                                         .foregroundColor(.white.opacity(0.6))
                                 }
                             }
-                            .frame(maxWidth: .infinity)
                             
-                            Divider()
-                                .frame(width: 1, height: 40)
-                                .background(Color.white.opacity(0.2))
+                            Spacer()
                             
-                            // Powers
+                            // Powers (right-aligned to match timer above)
                             HStack(spacing: 8) {
                                 Image(systemName: "bolt.fill")
                                     .font(.system(size: 18))
@@ -404,7 +396,6 @@ struct MainView: View {
                                         .foregroundColor(.white.opacity(0.6))
                                 }
                             }
-                            .frame(maxWidth: .infinity)
                         }
                     }
                     .padding(20)
