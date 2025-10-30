@@ -80,7 +80,7 @@ struct GameView: View {
                 // Slots Grid (2 columns, 10 rows) - Full width and centered
                 VStack(spacing: 10) {
                     ForEach(0..<10, id: \.self) { row in
-                        HStack(spacing: 0) {
+                        HStack(spacing: 12) {
                             // Left column
                             SlotButton(
                                 slotNumber: row + 1,
