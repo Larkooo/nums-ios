@@ -434,7 +434,7 @@ struct MainView: View {
                     
                     // Entries
                     ScrollView {
-                        VStack(spacing: 8) {
+                        LazyVStack(spacing: 8) {
                             ForEach(leaderboard) { entry in
                                 HStack {
                                     Text("\(entry.rank)")
@@ -491,6 +491,7 @@ struct MainView: View {
                 }
                 .frame(maxHeight: .infinity)
                 .padding(.horizontal, 16)
+                .padding(.bottom, 20)
                 
                 // Page Navigation (TODO: Implement pagination or infinite scrolling)
                 // HStack(spacing: 12) {
