@@ -361,25 +361,19 @@ class DojoManager: ObservableObject {
             return
         }
         
-        // Reset pagination state if needed
-        if reset {
-            await MainActor.run {
-                self.leaderboardOffset = 0
-                self.arcadeLeaderboard = []
-                self.hasMoreLeaderboardEntries = true
-            }
-        }
-        
-        // Don't fetch if already loading or no more entries
-        let canLoad = await MainActor.run {
-            !self.isLoadingLeaderboard && !self.isLoadingMoreLeaderboard && self.hasMoreLeaderboardEntries
+        // Check if we should fetch (don't clear data yet!)
+        let (canLoad, currentOffset, isInitialLoad) = await MainActor.run {
+            let offset = reset ? 0 : self.leaderboardOffset
+            let canLoad = !self.isLoadingLeaderboard && !self.isLoadingMoreLeaderboard && (reset || self.hasMoreLeaderboardEntries)
+            let isInitial = self.arcadeLeaderboard.isEmpty
+            return (canLoad, offset, isInitial)
         }
         
         guard canLoad else { return }
         
         await MainActor.run {
             // Only show loading indicator for initial load or pagination, not refresh
-            if reset && self.arcadeLeaderboard.isEmpty {
+            if reset && isInitialLoad {
                 self.isLoadingLeaderboard = true
             } else if !reset {
                 self.isLoadingMoreLeaderboard = true
@@ -387,7 +381,6 @@ class DojoManager: ObservableObject {
         }
         
         do {
-            let currentOffset = await MainActor.run { self.leaderboardOffset }
             print("📊 Fetching leaderboard via SQL for tournament #\(tournamentId) (offset: \(currentOffset))...")
             
             // SQL query to get arcade-style leaderboard (one entry per game)
@@ -468,18 +461,26 @@ class DojoManager: ObservableObject {
             
             // Update state
             await MainActor.run {
-                // Append new entries to existing ones
-                self.arcadeLeaderboard.append(contentsOf: entries)
-                self.leaderboardOffset += entries.count
-                
-                // If we got fewer entries than page size, no more to load
-                if entries.count < self.leaderboardPageSize {
-                    self.hasMoreLeaderboardEntries = false
+                if reset {
+                    // Replace entire leaderboard (polling/refresh)
+                    self.arcadeLeaderboard = entries
+                    self.leaderboardOffset = entries.count
+                    self.hasMoreLeaderboardEntries = entries.count >= self.leaderboardPageSize
+                    print("✅ SQL Leaderboard refreshed: \(entries.count) entries")
+                } else {
+                    // Append new entries (pagination)
+                    self.arcadeLeaderboard.append(contentsOf: entries)
+                    self.leaderboardOffset += entries.count
+                    
+                    // If we got fewer entries than page size, no more to load
+                    if entries.count < self.leaderboardPageSize {
+                        self.hasMoreLeaderboardEntries = false
+                    }
+                    print("✅ SQL Leaderboard loaded more: \(entries.count) new entries (total: \(self.arcadeLeaderboard.count))")
                 }
                 
                 self.isLoadingLeaderboard = false
                 self.isLoadingMoreLeaderboard = false
-                print("✅ SQL Leaderboard loaded: \(entries.count) new entries (total: \(self.arcadeLeaderboard.count))")
             }
             
         } catch {
