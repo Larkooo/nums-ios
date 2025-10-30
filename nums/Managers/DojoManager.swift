@@ -212,6 +212,7 @@ class DojoManager: ObservableObject {
     // Arcade Leaderboard (one entry per game)
     @Published var arcadeLeaderboard: [ArcadeLeaderboardEntry] = []
     @Published var isLoadingLeaderboard = false
+    @Published var isLoadingMoreLeaderboard = false // For pagination only
     @Published var hasMoreLeaderboardEntries = true
     private var leaderboardOffset = 0
     private let leaderboardPageSize = 50
@@ -371,13 +372,18 @@ class DojoManager: ObservableObject {
         
         // Don't fetch if already loading or no more entries
         let canLoad = await MainActor.run {
-            !self.isLoadingLeaderboard && self.hasMoreLeaderboardEntries
+            !self.isLoadingLeaderboard && !self.isLoadingMoreLeaderboard && self.hasMoreLeaderboardEntries
         }
         
         guard canLoad else { return }
         
         await MainActor.run {
-            self.isLoadingLeaderboard = true
+            // Only show loading indicator for initial load or pagination, not refresh
+            if reset && self.arcadeLeaderboard.isEmpty {
+                self.isLoadingLeaderboard = true
+            } else if !reset {
+                self.isLoadingMoreLeaderboard = true
+            }
         }
         
         do {
@@ -472,6 +478,7 @@ class DojoManager: ObservableObject {
                 }
                 
                 self.isLoadingLeaderboard = false
+                self.isLoadingMoreLeaderboard = false
                 print("✅ SQL Leaderboard loaded: \(entries.count) new entries (total: \(self.arcadeLeaderboard.count))")
             }
             
@@ -479,6 +486,7 @@ class DojoManager: ObservableObject {
             await MainActor.run {
                 self.errorMessage = "Failed to fetch leaderboard: \(error.localizedDescription)"
                 self.isLoadingLeaderboard = false
+                self.isLoadingMoreLeaderboard = false
                 print("❌ SQL Leaderboard error: \(error)")
             }
         }

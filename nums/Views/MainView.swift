@@ -141,7 +141,8 @@ struct MainView: View {
     private func loadMoreLeaderboardEntries() {
         guard let tournamentId = dojoManager.selectedTournament?.id,
               dojoManager.hasMoreLeaderboardEntries,
-              !dojoManager.isLoadingLeaderboard else {
+              !dojoManager.isLoadingLeaderboard,
+              !dojoManager.isLoadingMoreLeaderboard else {
             return
         }
         
@@ -336,61 +337,56 @@ struct MainView: View {
                         }
                         
                         // Stats Row
-                        HStack(spacing: 16) {
+                        HStack(spacing: 0) {
                             // Entries
-                            HStack(spacing: 6) {
+                            VStack(spacing: 4) {
                                 Image(systemName: "person.2.fill")
-                                    .font(.system(size: 14))
+                                    .font(.system(size: 16))
                                     .foregroundColor(.purple.opacity(0.8))
-                                VStack(alignment: .leading, spacing: 0) {
-                                    Text("\(entryCount)")
-                                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                                        .foregroundColor(.white)
-                                    Text("ENTRIES")
-                                        .font(.system(size: 10, weight: .medium))
-                                        .foregroundColor(.white.opacity(0.6))
-                                }
+                                Text("\(entryCount)")
+                                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                                    .foregroundColor(.white)
+                                Text("ENTRIES")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.6))
                             }
+                            .frame(maxWidth: .infinity)
                             
                             Divider()
-                                .frame(height: 30)
+                                .frame(width: 1, height: 40)
                                 .background(Color.white.opacity(0.2))
                             
                             // Duration
-                            HStack(spacing: 6) {
+                            VStack(spacing: 4) {
                                 Image(systemName: "clock.fill")
-                                    .font(.system(size: 14))
+                                    .font(.system(size: 16))
                                     .foregroundColor(.purple.opacity(0.8))
-                                VStack(alignment: .leading, spacing: 0) {
-                                    Text(tournamentDuration)
-                                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                                        .foregroundColor(.white)
-                                    Text("DURATION")
-                                        .font(.system(size: 10, weight: .medium))
-                                        .foregroundColor(.white.opacity(0.6))
-                                }
+                                Text(tournamentDuration)
+                                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                                    .foregroundColor(.white)
+                                Text("DURATION")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.6))
                             }
+                            .frame(maxWidth: .infinity)
                             
                             Divider()
-                                .frame(height: 30)
+                                .frame(width: 1, height: 40)
                                 .background(Color.white.opacity(0.2))
                             
                             // Powers
-                            HStack(spacing: 6) {
+                            VStack(spacing: 4) {
                                 Image(systemName: "bolt.fill")
-                                    .font(.system(size: 14))
+                                    .font(.system(size: 16))
                                     .foregroundColor(.yellow.opacity(0.8))
-                                VStack(alignment: .leading, spacing: 0) {
-                                    Text("\(powers)")
-                                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                                        .foregroundColor(.white)
-                                    Text("POWERS")
-                                        .font(.system(size: 10, weight: .medium))
-                                        .foregroundColor(.white.opacity(0.6))
-                                }
+                                Text("\(powers)")
+                                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                                    .foregroundColor(.white)
+                                Text("POWERS")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.6))
                             }
-                            
-                            Spacer()
+                            .frame(maxWidth: .infinity)
                         }
                     }
                     .padding(20)
@@ -457,8 +453,8 @@ struct MainView: View {
                                 }
                             }
                             
-                            // Loading indicator at bottom
-                            if dojoManager.isLoadingLeaderboard {
+                            // Loading indicator at bottom (only for pagination)
+                            if dojoManager.isLoadingMoreLeaderboard {
                                 HStack {
                                     Spacer()
                                     ProgressView()
