@@ -5,7 +5,7 @@ struct LeaderboardEntry: Identifiable {
     let rank: Int
     let player: String
     let score: Int
-    let prize: String
+    let reward: String
     let isCurrentUser: Bool
 }
 
@@ -93,15 +93,15 @@ struct MainView: View {
     private var leaderboard: [LeaderboardEntry] {
         let currentAddress = sessionManager.sessionAddress?.lowercased() ?? ""
         
-        // Show player leaderboard (games aggregated by player) if available
-        if !dojoManager.playerLeaderboard.isEmpty {
-            return dojoManager.playerLeaderboard.enumerated().map { (index, player) in
+        // Show arcade leaderboard (one entry per game)
+        if !dojoManager.arcadeLeaderboard.isEmpty {
+            return dojoManager.arcadeLeaderboard.enumerated().map { (index, entry) in
                 LeaderboardEntry(
                     rank: index + 1,
-                    player: player.username ?? String(player.address.prefix(10)), // Show username or address
-                    score: player.totalScore, // Total score from all games
-                    prize: "-", // No prize for game leaderboard
-                    isCurrentUser: player.address.lowercased() == currentAddress
+                    player: entry.username ?? String(entry.address.prefix(10)),
+                    score: entry.score,
+                    reward: String(entry.reward),
+                    isCurrentUser: entry.address.lowercased() == currentAddress
                 )
             }
         }
@@ -110,10 +110,10 @@ struct MainView: View {
         return dojoManager.leaderboard.enumerated().map { (index, player) in
             LeaderboardEntry(
                 rank: index + 1,
-                player: String(player.games.prefix(10)), // Show first 10 chars of games
+                player: String(player.games.prefix(10)),
                 score: player.capacity,
-                prize: String(player.requirement),
-                isCurrentUser: false // TODO: Compare with current user's address
+                reward: String(player.requirement),
+                isCurrentUser: false
             )
         }
     }
@@ -320,7 +320,7 @@ struct MainView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                         Text("SCORE")
                             .frame(width: 70, alignment: .center)
-                        Text("PRIZE")
+                        Text("REWARD")
                             .frame(width: 70, alignment: .trailing)
                     }
                     .font(.system(size: 14, weight: .bold, design: .rounded))
@@ -347,11 +347,15 @@ struct MainView: View {
                                         .font(.system(size: 14, weight: .bold, design: .rounded))
                                         .foregroundColor(entry.isCurrentUser ? .yellow : .white)
                                         .frame(width: 70, alignment: .center)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.5)
                                     
-                                    Text(entry.prize)
-                                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    Text(entry.reward)
+                                        .font(.system(size: 14, weight: .bold, design: .rounded))
                                         .foregroundColor(entry.isCurrentUser ? .yellow : .white)
                                         .frame(width: 70, alignment: .trailing)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.5)
                                 }
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 8)

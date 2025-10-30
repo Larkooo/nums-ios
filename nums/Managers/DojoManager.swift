@@ -85,14 +85,14 @@ struct Game: Identifiable {
     let accountAddress: String // Player who owns this game
 }
 
-// Player Leaderboard Model (aggregated games by player)
-struct PlayerLeaderboard: Identifiable {
-    let id: String // address
+// Arcade Leaderboard Entry (one entry per game)
+struct ArcadeLeaderboardEntry: Identifiable {
+    let id: String // unique id: "\(address)-\(tokenId)"
+    let tokenId: String
     let address: String
     let username: String?
-    let gameCount: Int
-    let totalScore: Int // Sum of all game scores
-    let games: [Game]
+    let score: Int
+    let reward: UInt32
 }
 
 // Helper struct for SQL query results
@@ -199,7 +199,6 @@ class DojoManager: ObservableObject {
     @Published var selectedTournament: Tournament?
     @Published var leaderboard: [LeaderboardPlayer] = []
     @Published var isLoadingTournaments = false
-    @Published var isLoadingLeaderboard = false
     @Published var showTournamentSelector = false
     
     // Token Balance
@@ -211,8 +210,8 @@ class DojoManager: ObservableObject {
     @Published var isLoadingGames = false
     
     // Player Leaderboard (aggregated by player)
-    @Published var playerLeaderboard: [PlayerLeaderboard] = []
-    @Published var isLoadingPlayerLeaderboard = false
+    @Published var arcadeLeaderboard: [ArcadeLeaderboardEntry] = []
+    @Published var isLoadingLeaderboard = false
     
     // Game Models (NUMS-Game entities mapped by token ID)
     @Published var gameModels: [String: GameModel] = [:]
@@ -359,13 +358,13 @@ class DojoManager: ObservableObject {
         }
         
         await MainActor.run {
-            self.isLoadingPlayerLeaderboard = true
+            self.isLoadingLeaderboard = true
         }
         
         do {
             print("📊 Fetching leaderboard via SQL for tournament #\(tournamentId)...")
             
-            // SQL query to get player leaderboard with proper joins
+            // SQL query to get arcade-style leaderboard (one entry per game)
             let query = """
             SELECT t.token_id, c.username, g.score, g.reward, tb.account_address
             FROM tokens AS t
@@ -386,7 +385,7 @@ class DojoManager: ObservableObject {
             print("📦 SQL returned \(rows.count) rows")
             
             // Build arcade-style leaderboard (one entry per game, no deduplication)
-            var players: [PlayerLeaderboard] = []
+            var entries: [ArcadeLeaderboardEntry] = []
             
             for row in rows {
                 var owner: String?
@@ -429,35 +428,29 @@ class DojoManager: ObservableObject {
                     }
                     
                     // Create one leaderboard entry per game (arcade-style)
-                    let player = PlayerLeaderboard(
+                    let entry = ArcadeLeaderboardEntry(
                         id: "\(owner)-\(tokenId)", // Unique ID per game
+                        tokenId: tokenId,
                         address: owner,
                         username: username ?? usernameCache[owner],
-                        gameCount: 1,
-                        totalScore: Int(score), // Individual game score
-                        games: [Game(
-                            id: tokenId,
-                            tokenId: tokenId,
-                            contractAddress: Constants.gameAddress,
-                            balance: "1",
-                            accountAddress: owner
-                        )]
+                        score: Int(score),
+                        reward: reward
                     )
-                    players.append(player)
+                    entries.append(entry)
                 }
             }
             
             // Already sorted by score DESC in SQL query
             await MainActor.run {
-                self.playerLeaderboard = players
-                self.isLoadingPlayerLeaderboard = false
-                print("✅ SQL Leaderboard loaded: \(players.count) entries (arcade-style)")
+                self.arcadeLeaderboard = entries
+                self.isLoadingLeaderboard = false
+                print("✅ SQL Leaderboard loaded: \(entries.count) entries (arcade-style)")
             }
             
         } catch {
             await MainActor.run {
                 self.errorMessage = "Failed to fetch leaderboard: \(error.localizedDescription)"
-                self.isLoadingPlayerLeaderboard = false
+                self.isLoadingLeaderboard = false
                 print("❌ SQL Leaderboard error: \(error)")
             }
         }
