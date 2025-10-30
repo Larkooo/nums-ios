@@ -102,7 +102,7 @@ struct GameData {
 }
 
 // Game Model (NUMS-Game entity)
-struct GameModel: Identifiable {
+struct GameModel: Identifiable, Equatable {
     let id: String // token_id as string
     let tokenId: UInt64
     let over: Bool
@@ -118,6 +118,25 @@ struct GameModel: Identifiable {
     let reward: UInt32
     let score: UInt32
     let slots: String // felt252 encoded slots
+    
+    // Equatable conformance - compare all stored properties
+    static func == (lhs: GameModel, rhs: GameModel) -> Bool {
+        return lhs.id == rhs.id &&
+               lhs.tokenId == rhs.tokenId &&
+               lhs.over == rhs.over &&
+               lhs.claimed == rhs.claimed &&
+               lhs.level == rhs.level &&
+               lhs.slotCount == rhs.slotCount &&
+               lhs.slotMin == rhs.slotMin &&
+               lhs.slotMax == rhs.slotMax &&
+               lhs.number == rhs.number &&
+               lhs.nextNumber == rhs.nextNumber &&
+               lhs.tournamentId == rhs.tournamentId &&
+               lhs.powers == rhs.powers &&
+               lhs.reward == rhs.reward &&
+               lhs.score == rhs.score &&
+               lhs.slots == rhs.slots
+    }
     
     // Computed property to extract set slots from the felt252 encoded slots
     var setSlots: Set<Int> {
