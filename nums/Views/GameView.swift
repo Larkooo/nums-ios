@@ -284,23 +284,23 @@ struct GameView: View {
                     // Game Over Title
                     Text("GAME OVER")
                         .font(.system(size: 36, weight: .black, design: .rounded))
-                        .foregroundColor(.red)
+                        .foregroundColor(.white)
                         .tracking(2)
-                        .shadow(color: .red.opacity(0.5), radius: 10, x: 0, y: 0)
+                        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 0)
                     
                     // Score Card (scaled up version of bottom card)
                     HStack(spacing: 0) {
                         // Final Score
                         VStack(alignment: .center, spacing: 8) {
                             Image(systemName: "star.fill")
-                                .font(.system(size: 32))
+                                .font(.system(size: 28))
                                 .foregroundColor(.purple.opacity(0.8))
                             Text("FINAL SCORE")
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
                                 .foregroundColor(.white.opacity(0.5))
                                 .tracking(1)
                             Text("\(score)")
-                                .font(.system(size: 48, weight: .black, design: .rounded))
+                                .font(.system(size: 36, weight: .black, design: .rounded))
                                 .foregroundColor(.white)
                                 .shadow(color: .purple.opacity(0.3), radius: 5, x: 0, y: 3)
                                 .lineLimit(1)
@@ -310,7 +310,7 @@ struct GameView: View {
                         .padding(.vertical, 8)
                         
                         Divider()
-                            .frame(width: 2, height: 100)
+                            .frame(width: 2, height: 85)
                             .background(
                                 LinearGradient(
                                     colors: [.white.opacity(0.1), .white.opacity(0.3), .white.opacity(0.1)],
@@ -322,14 +322,14 @@ struct GameView: View {
                         // Reward
                         VStack(alignment: .center, spacing: 8) {
                             Image(systemName: "trophy.fill")
-                                .font(.system(size: 32))
+                                .font(.system(size: 28))
                                 .foregroundColor(.yellow.opacity(0.9))
                             Text("REWARD")
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
                                 .foregroundColor(.white.opacity(0.5))
                                 .tracking(1)
                             Text("\(reward)")
-                                .font(.system(size: 48, weight: .black, design: .rounded))
+                                .font(.system(size: 36, weight: .black, design: .rounded))
                                 .foregroundColor(.yellow)
                                 .shadow(color: .yellow.opacity(0.3), radius: 5, x: 0, y: 3)
                         }
@@ -362,12 +362,18 @@ struct GameView: View {
                     )
                     .padding(.horizontal, 32)
                     
-                    // Close Button
-                    Button(action: {
-                        dismissGameOver()
-                    }) {
-                        Text("Close")
-                            .font(.system(size: 18, weight: .bold))
+                    // Buttons
+                    HStack(spacing: 12) {
+                        // Home Button
+                        Button(action: {
+                            dismiss()
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "house.fill")
+                                    .font(.system(size: 16))
+                                Text("Home")
+                                    .font(.system(size: 18, weight: .bold))
+                            }
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
@@ -383,6 +389,30 @@ struct GameView: View {
                                 RoundedRectangle(cornerRadius: 16)
                                     .stroke(Color.white.opacity(0.2), lineWidth: 1)
                             )
+                        }
+                        
+                        // Close Button
+                        Button(action: {
+                            dismissGameOver()
+                        }) {
+                            Text("Close")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(
+                                    LinearGradient(
+                                        colors: [Color.white.opacity(0.25), Color.white.opacity(0.15)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .cornerRadius(16)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                )
+                        }
                     }
                     .padding(.horizontal, 32)
                 }
