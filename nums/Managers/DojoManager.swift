@@ -1103,43 +1103,72 @@ class DojoManager: ObservableObject {
         )
     }
     
-    func setGameSlot(gameId: String, slot: UInt8, sessionManager: SessionManager) async {
+    func setGameSlot(gameId: String, slot: UInt8, sessionManager: SessionManager) async throws {
         print("🎮 Setting slot #\(slot) for game #\(gameId)")
+        
+        // Get the game model to know the slot min/max range
+        guard let gameModel = gameModels[gameId] else {
+            print("❌ Game model not found for game #\(gameId)")
+            throw NSError(domain: "DojoManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Game not found"])
+        }
         
         // Convert parameters to felt252 (hex strings)
         let gameIdFelt = String(format: "0x%x", UInt64(gameId) ?? 0)
         let slotIndex = String(format: "0x%x", slot - 1) // Convert to 0-based index
+        let slotMin = String(format: "0x%x", gameModel.slotMin)
+        let slotMax = String(format: "0x%x", gameModel.slotMax)
+        
+        print("   📊 Slot range: \(gameModel.slotMin) - \(gameModel.slotMax)")
         
         // Multi-call: VRF request_random + game set
         guard let session = sessionManager.sessionAccount else {
             print("❌ No session account available")
-            return
+            throw NSError(domain: "DojoManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "No active session. Please reconnect your wallet."])
         }
         
+        // Create both calls
+        // VRF request_random takes min and max values for the random number range
+        let vrfCall = Call(
+            contractAddress: Constants.vrfAddress,
+            entrypoint: "request_random",
+            calldata: [slotMin, slotMax]  // Pass the slot value range
+        )
+        
+        // Game set takes game ID and slot index (0-based)
+        let setCall = Call(
+            contractAddress: Constants.gameAddress,
+            entrypoint: "set",
+            calldata: [gameIdFelt, slotIndex]
+        )
+        
+        // Execute multi-call
         do {
-            // Create both calls
-            // VRF request_random takes game address as both parameters
-            let vrfCall = Call(
-                contractAddress: Constants.vrfAddress,
-                entrypoint: "request_random",
-                calldata: [Constants.gameAddress, Constants.gameAddress]
-            )
-            
-            // Game set takes game ID and slot index (0-based)
-            let setCall = Call(
-                contractAddress: Constants.gameAddress,
-                entrypoint: "set",
-                calldata: [gameIdFelt, slotIndex]
-            )
-            
-            // Execute multi-call
             let txHash = try session.executeFromOutside(calls: [vrfCall, setCall])
-            
             print("✅ Slot set transaction submitted: \(txHash)")
             print("💡 Game state will update via subscription")
-            
         } catch {
-            print("❌ Failed to set slot: \(error.localizedDescription)")
+            print("❌ Failed to set slot: \(error)")
+            // Extract a user-friendly error message
+            let errorMessage = extractErrorMessage(from: error)
+            throw NSError(domain: "DojoManager", code: 3, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+        }
+    }
+    
+    // Helper to extract user-friendly error messages
+    private func extractErrorMessage(from error: Error) -> String {
+        let errorDescription = error.localizedDescription
+        
+        // Check for common error patterns
+        if errorDescription.contains("invalid number of arguments") {
+            return "Transaction failed: Invalid parameters sent to contract"
+        } else if errorDescription.contains("UnexpectedError") {
+            return "Transaction failed: Contract error occurred"
+        } else if errorDescription.contains("ExecutionError") {
+            return "Transaction failed: Execution error"
+        } else if errorDescription.contains("VRF") {
+            return "Random number generation failed. Please try again."
+        } else {
+            return "Failed to set slot: \(errorDescription)"
         }
     }
     

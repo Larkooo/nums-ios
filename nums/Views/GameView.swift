@@ -23,6 +23,8 @@ struct GameView: View {
     @State private var slotValues: [UInt16] = []
     @State private var isSettingSlot = false
     @State private var selectedSlot: Int? = nil
+    @State private var errorMessage: String? = nil
+    @State private var showError = false
     
     var body: some View {
         ZStack {
@@ -193,6 +195,43 @@ struct GameView: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 Color.clear.frame(height: 0)
             }
+            
+            // Error banner
+            if showError, let error = errorMessage {
+                VStack {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.white)
+                        Text(error)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                            .lineLimit(2)
+                        Spacer()
+                        Button(action: {
+                            withAnimation(.spring()) {
+                                showError = false
+                            }
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.red.opacity(0.9))
+                            .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                    )
+                    .padding(.horizontal, 20)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    
+                    Spacer()
+                }
+                .padding(.top, 60)
+            }
         }
         .navigationBarHidden(true)
         .onAppear {
@@ -313,14 +352,35 @@ struct GameView: View {
         print("✅ Setting slot #\(slotNumber) for game \(gameTokenId) with number \(currentNumber)")
         
         Task {
-            await dojoManager.setGameSlot(
-                gameId: gameTokenId,
-                slot: UInt8(slotNumber),
-                sessionManager: sessionManager
-            )
-            
-            // Game state will update automatically via subscription
-            // No need to manually reload
+            do {
+                try await dojoManager.setGameSlot(
+                    gameId: gameTokenId,
+                    slot: UInt8(slotNumber),
+                    sessionManager: sessionManager
+                )
+                
+                // Game state will update automatically via subscription
+                // No need to manually reload
+            } catch {
+                // Show error banner
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    withAnimation(.spring()) {
+                        showError = true
+                    }
+                    
+                    // Auto-dismiss after 5 seconds
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                        withAnimation(.spring()) {
+                            showError = false
+                        }
+                    }
+                    
+                    // Reset setting state
+                    isSettingSlot = false
+                    selectedSlot = nil
+                }
+            }
         }
     }
 }
