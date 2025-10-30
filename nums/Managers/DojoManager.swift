@@ -358,6 +358,7 @@ class DojoManager: ObservableObject {
                 AND ta.trait_name = 'Minted By'
                 AND ta.trait_value = '\(Constants.gameAddress)'
                 AND g.tournament_id = \(tournamentId)
+            ORDER BY g.score DESC
             LIMIT 1000
             """
             
@@ -432,14 +433,10 @@ class DojoManager: ObservableObject {
                 players.append(player)
             }
             
-            // Sort by total score
+            // Sort players by total score (sum of all their games' scores)
             players.sort { player1, player2 in
-                let score1 = player1.games.reduce(0) { total, game in
-                    total + Int(gameModels[game.tokenId]?.score ?? 0)
-                }
-                let score2 = player2.games.reduce(0) { total, game in
-                    total + Int(gameModels[game.tokenId]?.score ?? 0)
-                }
+                let score1 = playerGames[player1.address]?.reduce(0) { $0 + Int($1.score) } ?? 0
+                let score2 = playerGames[player2.address]?.reduce(0) { $0 + Int($1.score) } ?? 0
                 return score1 > score2
             }
             
