@@ -148,6 +148,14 @@ struct GameView: View {
         .onAppear {
             print("🎮 GameView appeared for token: \(gameTokenId), isNewGame: \(isNewGame)")
             
+            // Check if model already exists in dictionary
+            if let existingModel = dojoManager.gameModels[gameTokenId] {
+                print("   📦 Found existing model in dictionary, loading immediately...")
+                loadModelData(existingModel)
+            } else {
+                print("   ⏳ No existing model, will fetch from network...")
+            }
+            
             // Start timer for countdown
             Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
                 currentTime = Date()
@@ -186,28 +194,34 @@ struct GameView: View {
             if let model = newModel {
                 print("   📊 Updating UI - Score: \(model.score), Number: \(model.number), Next: \(model.nextNumber)")
                 print("   🎰 Set slots: \(model.setSlots)")
-                
-                currentNumber = model.number
-                nextNumber = model.nextNumber
-                gameLevel = model.level
-                powers = model.powers
-                score = model.score
-                reward = model.reward
-                slotMin = model.slotMin
-                slotMax = model.slotMax
-                slotCount = model.slotCount
-                isGameOver = model.over
-                setSlots = model.setSlots
-                
-                // Clear loading state if we were setting a slot
-                if isSettingSlot {
-                    isSettingSlot = false
-                    selectedSlot = nil
-                }
+                loadModelData(model)
             } else {
                 print("   ⚠️ Model is nil")
             }
         }
+    }
+    
+    // Helper function to load model data into state
+    private func loadModelData(_ model: GameModel) {
+        currentNumber = model.number
+        nextNumber = model.nextNumber
+        gameLevel = model.level
+        powers = model.powers
+        score = model.score
+        reward = model.reward
+        slotMin = model.slotMin
+        slotMax = model.slotMax
+        slotCount = model.slotCount
+        isGameOver = model.over
+        setSlots = model.setSlots
+        
+        // Clear loading state if we were setting a slot
+        if isSettingSlot {
+            isSettingSlot = false
+            selectedSlot = nil
+        }
+        
+        print("   ✅ UI state updated successfully")
     }
     
     private func setSlot(_ slotNumber: Int) {
