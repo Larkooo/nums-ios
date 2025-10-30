@@ -21,6 +21,7 @@ struct MainView: View {
     @State private var isSoundEnabled = true
     @State private var currentTime = Date() // For updating countdown timer
     @State private var sessionInfoDetent: PresentationDetent = .medium
+    @State private var isInitialLoadComplete = false
     
     // Check if session is valid (not expired and not revoked)
     private var isSessionValid: Bool {
@@ -160,7 +161,45 @@ struct MainView: View {
         }
     }
     
+    private func checkInitialLoadComplete() {
+        // Don't mark complete if already complete
+        if isInitialLoadComplete {
+            return
+        }
+        
+        // Check if leaderboard has finished loading
+        let leaderboardReady = !dojoManager.isLoadingLeaderboard
+        
+        // Check if balance has loaded (if we have a session)
+        let balanceReady: Bool
+        if isSessionValid {
+            balanceReady = !dojoManager.isLoadingBalance
+        } else {
+            balanceReady = true // No session, so balance isn't needed
+        }
+        
+        // Mark as complete when both are ready
+        if leaderboardReady && balanceReady {
+            print("✅ Initial load complete - showing main content")
+            isInitialLoadComplete = true
+        }
+    }
+    
     var body: some View {
+        ZStack {
+            // Show splash screen until initial load is complete
+            if !isInitialLoadComplete {
+                SplashView()
+                    .transition(.opacity)
+            } else {
+                mainContent
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: isInitialLoadComplete)
+    }
+    
+    private var mainContent: some View {
         ZStack {
             // Purple background
             Color(red: 0.349, green: 0.122, blue: 1.0)
@@ -557,15 +596,8 @@ struct MainView: View {
                 // Play Button
                 Button(action: {
                     if isSessionValid {
-                        // Load games in background and show sheet when ready
-                        Task {
-                            if let userAddress = sessionManager.sessionAddress {
-                                await dojoManager.fetchUserGames(for: userAddress)
-                            }
-                            await MainActor.run {
-                                showGameSelection = true
-                            }
-                        }
+                        // Games are already preloaded, just show the sheet
+                        showGameSelection = true
                     } else {
                         // Prompt user to connect with new keypair
                         sessionManager.privateKey = generateRandomPrivateKey()
@@ -636,8 +668,18 @@ struct MainView: View {
                     await dojoManager.fetchTokenBalance(for: address)
                     // Subscribe to balance updates
                     await dojoManager.subscribeToTokenBalance(for: address)
+                    // Preload user's games for smooth Play button experience
+                    await dojoManager.fetchUserGames(for: address)
                     // Note: fetchAllGames() is called during Torii initialization for leaderboard
+                    
+                    // Mark initial load as complete when all data is ready
+                    await MainActor.run {
+                        checkInitialLoadComplete()
+                    }
                 }
+            } else {
+                // If no session, just wait for leaderboard
+                checkInitialLoadComplete()
             }
             
             // Start timer to update countdown every second
@@ -652,8 +694,16 @@ struct MainView: View {
                     print("🔄 Torii connected - fetching balance for session")
                     await dojoManager.fetchTokenBalance(for: address)
                     await dojoManager.subscribeToTokenBalance(for: address)
+                    await dojoManager.fetchUserGames(for: address)
                     // Note: fetchAllGames() is already called during Torii initialization
+                    
+                    await MainActor.run {
+                        checkInitialLoadComplete()
+                    }
                 }
+            } else if isConnected {
+                // Torii connected but no session - just mark as ready
+                checkInitialLoadComplete()
             }
         }
         .onChange(of: sessionManager.sessionAddress) { newAddress in
@@ -664,11 +714,19 @@ struct MainView: View {
                     await dojoManager.fetchTokenBalance(for: address)
                     // Subscribe to balance updates
                     await dojoManager.subscribeToTokenBalance(for: address)
+                    // Preload user's games
+                    await dojoManager.fetchUserGames(for: address)
                     // Note: Global games and leaderboard remain populated from fetchAllGames()
                 }
             } else {
                 // Reset balance when disconnected (keep global games/leaderboard)
                 dojoManager.tokenBalance = 0
+            }
+        }
+        .onChange(of: dojoManager.isLoadingLeaderboard) { isLoading in
+            // Check if we can complete initial load when leaderboard finishes loading
+            if !isLoading {
+                checkInitialLoadComplete()
             }
         }
     }
