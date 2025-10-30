@@ -491,7 +491,8 @@ struct MainView: View {
                                 Text("End of leaderboard")
                                     .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(.white.opacity(0.5))
-                                    .padding(.vertical, 20)
+                                    .padding(.top, 4)
+                                    .padding(.bottom, 20)
                             }
                         }
                     }
