@@ -1089,19 +1089,47 @@ class DojoManager: ObservableObject {
         return nil
     }
     
-    func startGame(gameId: String, tournamentId: Int, sessionManager: SessionManager) async {
-        print("🎮 Starting new game #\(gameId) for tournament #\(tournamentId)")
+    func startGame(gameId: String, tournamentId: Int, sessionManager: SessionManager) async throws {
+        print("🎮 Starting game #\(gameId)")
         
-        // Convert game ID to felt252 (hex string)
-        let gameIdFelt = String(format: "0x%x", UInt64(gameId) ?? 0)
-        let tournamentIdFelt = String(format: "0x%x", tournamentId)
+        guard let session = sessionManager.sessionAccount else {
+            print("❌ No session account available")
+            throw NSError(domain: "DojoManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "No active session. Please reconnect your wallet."])
+        }
         
-        await sessionManager.executeTransaction(
+        // Game ID should already be a hex string (e.g., "0x4c")
+        let gameIdFelt = gameId
+        
+        print("   🎲 Game ID: \(gameIdFelt)")
+        
+        // Multi-call: VRF request_random + game start
+        let vrfCall = Call(
+            contractAddress: Constants.vrfAddress,
+            entrypoint: "request_random",
+            calldata: [
+                Constants.gameAddress,  // caller: the game contract
+                "0x0",                  // source type: 0 = Nonce
+                Constants.gameAddress   // source data: game contract address for Nonce
+            ]
+        )
+        
+        let startCall = Call(
             contractAddress: Constants.gameAddress,
             entrypoint: "start",
-            calldata: [gameIdFelt]
+            calldata: [gameIdFelt]  // Only game ID
         )
-    }
+        
+        do {
+            let txHash = try session.executeFromOutside(calls: [vrfCall, startCall])
+            print("✅ Game started! Transaction: \(txHash)")
+            
+            // Subscribe to the game for real-time updates
+            await subscribeToGame(gameId)
+        } catch {
+            print("❌ Failed to start game: \(error)")
+            let errorMessage = extractErrorMessage(from: error)
+            throw NSError(domain: "DojoManager", code: 2, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+        }
     
     // Buy a new game (approve + buy + request_random + start)
     func buyGame(username: String, tournamentId: UInt64, sessionManager: SessionManager) async throws -> String {
