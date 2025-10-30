@@ -15,16 +15,10 @@ struct AccountConnectedCard: View {
             
             // Success Card
             VStack(spacing: 20) {
-                // Success Icon
-                ZStack {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 80, height: 80)
-                    
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 40, weight: .bold))
-                        .foregroundColor(.white)
-                }
+                // Controller Icon
+                Image(systemName: "gamecontroller.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(.white)
                 
                 // Title
                 Text("Account Connected!")
@@ -97,13 +91,16 @@ struct AccountConnectedCard: View {
                 }
                 .padding(.horizontal, 24)
             }
-            .padding(.vertical, 40)
+            .padding(.top, 60)
+            .padding(.bottom, 40)
+            .padding(.horizontal, 24)
             .background(
                 Color(red: 0.349, green: 0.122, blue: 1.0)
             )
             .cornerRadius(24)
             .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
             .padding(.horizontal, 32)
+            .padding(.top, 80)
         }
         .transition(.opacity.combined(with: .scale))
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isPresented)
