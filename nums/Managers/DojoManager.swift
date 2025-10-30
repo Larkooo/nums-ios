@@ -1152,9 +1152,7 @@ class DojoManager: ObservableObject {
             
             // Fetch the newly created game token for this user
             print("   🔍 Fetching new game token...")
-            guard let accountAddress = session.address() else {
-                throw NSError(domain: "DojoManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to get account address"])
-            }
+            let accountAddress = session.address()
             await fetchUserGames(for: accountAddress)
             
             // Find the most recent game token (highest ID by comparing hex strings as numbers)
