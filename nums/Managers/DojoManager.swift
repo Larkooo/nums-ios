@@ -1127,11 +1127,12 @@ class DojoManager: ObservableObject {
         }
         
         // Create both calls
-        // VRF request_random takes min and max values for the random number range
+        // VRF request_random likely takes the requesting contract address and a seed/request_id
+        // Try: requesting_address and seed (using game ID as seed)
         let vrfCall = Call(
             contractAddress: Constants.vrfAddress,
             entrypoint: "request_random",
-            calldata: [slotMin, slotMax]  // Pass the slot value range
+            calldata: [Constants.gameAddress, gameIdFelt]  // Contract address and game ID as seed
         )
         
         // Game set takes game ID and slot index (0-based)
