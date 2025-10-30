@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		CD52CB752EB26BD10077D39E /* dojo_uniffi.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = CD52CB742EB26BD10077D39E /* dojo_uniffi.xcframework */; };
-		CD52CB792EB26BE40077D39E /* controller_uniffi.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = CD52CB782EB26BE40077D39E /* controller_uniffi.xcframework */; };
+		CDFDD2012EB40ED500096501 /* controller_uniffi.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = CD52CB782EB26BE40077D39E /* controller_uniffi.xcframework */; };
+		CDFDD2032EB40ED500096501 /* dojo_uniffi.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = CD52CB742EB26BD10077D39E /* dojo_uniffi.xcframework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -27,19 +27,6 @@
 			remoteInfo = nums;
 		};
 /* End PBXContainerItemProxy section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		CD52CB772EB26BD10077D39E /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-			);
-			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		CD52CB2E2EB268440077D39E /* nums.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = nums.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -85,8 +72,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CD52CB792EB26BE40077D39E /* controller_uniffi.xcframework in Frameworks */,
-				CD52CB752EB26BD10077D39E /* dojo_uniffi.xcframework in Frameworks */,
+				CDFDD2032EB40ED500096501 /* dojo_uniffi.xcframework in Frameworks */,
+				CDFDD2012EB40ED500096501 /* controller_uniffi.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -147,7 +134,6 @@
 				CD52CB2A2EB268440077D39E /* Sources */,
 				CD52CB2B2EB268440077D39E /* Frameworks */,
 				CD52CB2C2EB268440077D39E /* Resources */,
-				CD52CB772EB26BD10077D39E /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
