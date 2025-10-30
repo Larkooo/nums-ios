@@ -611,6 +611,179 @@ class DojoManager: ObservableObject {
         }
     }
     
+    // MARK: - Parsing Helpers
+    
+    private func parseTournament(from entity: Entity) -> Tournament? {
+        let models = entity.models
+        
+        guard let id = extractInt(from: models, key: "id") else { return nil }
+        let powers = extractInt(from: models, key: "powers") ?? 0
+        let entryCount = extractInt(from: models, key: "entry_count") ?? 0
+        
+        guard let startTime = extractU64(from: models, key: "start_time") else {
+            print("⚠️ Tournament missing start_time")
+            return nil
+        }
+        guard let endTime = extractU64(from: models, key: "end_time") else {
+            print("⚠️ Tournament missing end_time")
+            return nil
+        }
+        
+        return Tournament(
+            id: id,
+            powers: powers,
+            entryCount: entryCount,
+            startTime: startTime,
+            endTime: endTime
+        )
+    }
+    
+    private func extractInt(from models: [Struct], key: String) -> Int? {
+        for model in models {
+            for member in model.children {
+                if member.name == key {
+                    return extractIntFromTy(member.ty)
+                }
+            }
+        }
+        return nil
+    }
+    
+    private func extractString(from models: [Struct], key: String) -> String? {
+        for model in models {
+            for member in model.children {
+                if member.name == key {
+                    return extractStringFromTy(member.ty)
+                }
+            }
+        }
+        return nil
+    }
+    
+    private func extractBool(from models: [Struct], key: String) -> Bool? {
+        for model in models {
+            for member in model.children {
+                if member.name == key {
+                    return extractBoolFromTy(member.ty)
+                }
+            }
+        }
+        return nil
+    }
+    
+    private func extractU64(from models: [Struct], key: String) -> UInt64? {
+        for model in models {
+            for member in model.children {
+                if member.name == key {
+                    return extractU64FromTy(member.ty)
+                }
+            }
+        }
+        return nil
+    }
+    
+    private func extractIntFromTy(_ ty: Ty) -> Int? {
+        switch ty {
+        case .primitive(let primitive):
+            switch primitive {
+            case .u8(let value): return Int(value)
+            case .u16(let value): return Int(value)
+            case .u32(let value): return Int(value)
+            case .u64(let value): return Int(value)
+            case .i8(let value): return Int(value)
+            case .i16(let value): return Int(value)
+            case .i32(let value): return Int(value)
+            case .i64(let value): return Int(value)
+            default: return nil
+            }
+        default: return nil
+        }
+    }
+    
+    private func extractStringFromTy(_ ty: Ty) -> String? {
+        switch ty {
+        case .byteArray(let value): return value
+        case .primitive(let primitive):
+            switch primitive {
+            case .felt252(let feltElement): return "\(feltElement)"
+            default: return nil
+            }
+        default: return nil
+        }
+    }
+    
+    private func extractBoolFromTy(_ ty: Ty) -> Bool? {
+        switch ty {
+        case .primitive(let primitive):
+            switch primitive {
+            case .bool(let value): return value
+            default: return nil
+            }
+        default: return nil
+        }
+    }
+    
+    private func extractU64FromTy(_ ty: Ty) -> UInt64? {
+        switch ty {
+        case .primitive(let primitive):
+            switch primitive {
+            case .u64(let value): return value
+            default: return nil
+            }
+        default: return nil
+        }
+    }
+    
+    private func extractUInt8FromTy(_ ty: Ty) -> UInt8 {
+        switch ty {
+        case .primitive(let primitive):
+            switch primitive {
+            case .u8(let value): return value
+            default: return 0
+            }
+        default: return 0
+        }
+    }
+    
+    private func extractUInt16FromTy(_ ty: Ty) -> UInt16 {
+        switch ty {
+        case .primitive(let primitive):
+            switch primitive {
+            case .u16(let value): return value
+            case .u8(let value): return UInt16(value)
+            default: return 0
+            }
+        default: return 0
+        }
+    }
+    
+    private func extractUInt32FromTy(_ ty: Ty) -> UInt32 {
+        switch ty {
+        case .primitive(let primitive):
+            switch primitive {
+            case .u32(let value): return value
+            case .u16(let value): return UInt32(value)
+            case .u8(let value): return UInt32(value)
+            default: return 0
+            }
+        default: return 0
+        }
+    }
+    
+    private func extractUInt64FromTy(_ ty: Ty) -> UInt64 {
+        switch ty {
+        case .primitive(let primitive):
+            switch primitive {
+            case .u64(let value): return value
+            case .u32(let value): return UInt64(value)
+            case .u16(let value): return UInt64(value)
+            case .u8(let value): return UInt64(value)
+            default: return 0
+            }
+        default: return 0
+        }
+    }
+    
     // MARK: - Subscriptions
     
     private func subscribeTournaments() async {
