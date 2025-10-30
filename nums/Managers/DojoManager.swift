@@ -147,7 +147,7 @@ struct GameModel: Identifiable, Equatable {
     
     private func unpackSlots(from hexString: String, slotCount: Int, slotMax: Int) -> Set<Int> {
         // Remove "0x" prefix if present
-        var hex = hexString.hasPrefix("0x") ? String(hexString.dropFirst(2)) : hexString
+        let hex = hexString.hasPrefix("0x") ? String(hexString.dropFirst(2)) : hexString
         
         // Handle empty or zero slots
         if hex.isEmpty || hex.trimmingCharacters(in: CharacterSet(charactersIn: "0")) == "" {
@@ -155,56 +155,49 @@ struct GameModel: Identifiable, Equatable {
             return []
         }
         
-        // Pad hex to ensure even number of characters for byte reversal
-        if hex.count % 2 != 0 {
-            hex = "0" + hex
-        }
-        
-        // Reverse the byte order (felt252 is stored big-endian, but we need little-endian for unpacking)
-        // Split into 2-character chunks (bytes) and reverse
-        var reversedHex = ""
-        for i in stride(from: hex.count - 2, through: 0, by: -2) {
-            let start = hex.index(hex.startIndex, offsetBy: i)
-            let end = hex.index(start, offsetBy: 2)
-            reversedHex += hex[start..<end]
-        }
-        
-        print("   🔢 Unpacking slots: original=\(hex)")
-        print("      Reversed (little-endian)=\(reversedHex)")
-        
-        // Convert reversed hex string to BInt (big integer)
-        guard var packed = BInt(reversedHex, radix: 16) else {
+        // Convert hex string to BInt directly (no byte reversal)
+        guard var packed = BInt(hex, radix: 16) else {
             print("⚠️ Failed to parse slots hex: \(hexString)")
             return []
         }
         
+        print("   🔢 Unpacking slots: hex=\(hex)")
         print("   📦 Packed value: \(packed)")
         
-        // SLOT_SIZE is the modulo value (slotMax + 1 to include 0)
+        // SLOT_SIZE is the number of possible values per slot (slotMax + 1 to include 0)
         let slotSize = BInt(slotMax + 1)
         var result: Set<Int> = []
         
-        // Unpack algorithm: extract slotCount values
-        // Each position stores the NUMBER that was placed in that slot (or 0 if empty)
-        for index in 0..<slotCount {
-            // Extract current value: packed % slotSize
-            let value = packed % slotSize
-            
-            // Convert to Int and check if slot has a number (non-zero)
+        // Unpack algorithm: extract slotCount values starting from the HIGHEST index
+        // The packing stores slots from high to low: packed = slot[n-1] + slot[n-2]*size + slot[n-3]*size^2 + ...
+        // So we need to extract from the end backwards
+        var values: [Int] = []
+        var tempPacked = packed
+        
+        // Extract all values first
+        for _ in 0..<slotCount {
+            let value = tempPacked % slotSize
             if let intValue = value.asInt() {
-                if intValue > 0 {
-                    print("      Slot \(index + 1): value=\(intValue) ✓")
-                    // Slot position (index+1) contains a number, so it's "set"
-                    result.insert(index + 1)
-                }
+                values.append(intValue)
+            } else {
+                values.append(0)
             }
-            
-            // Shift to next value: packed / slotSize
-            packed = packed / slotSize
-            
-            // Early exit if packed becomes 0 (no more data)
-            if packed == 0 {
+            tempPacked = tempPacked / slotSize
+            if tempPacked == 0 && values.count < slotCount {
+                // Fill remaining with zeros
+                while values.count < slotCount {
+                    values.append(0)
+                }
                 break
+            }
+        }
+        
+        // The values are in reverse order (slot 1 is first, slot 20 is last)
+        // So we check from the beginning
+        for (index, value) in values.enumerated() {
+            if value > 0 {
+                print("      Slot \(index + 1): value=\(value) ✓")
+                result.insert(index + 1)
             }
         }
         
