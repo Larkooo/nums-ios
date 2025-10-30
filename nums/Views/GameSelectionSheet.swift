@@ -238,18 +238,19 @@ struct GameRow: View {
                 Group {
                     if hasGameModel {
                         Text("Continue")
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.white)
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
                             .background(Color.white.opacity(0.2))
                             .cornerRadius(12)
+                            .lineLimit(1)
                     } else {
                         Text("Play")
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.system(size: 14, weight: .bold))
                             .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4))
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
                             .background(
                                 LinearGradient(
                                     colors: [Color.yellow, Color.orange],
@@ -258,6 +259,7 @@ struct GameRow: View {
                                 )
                             )
                             .cornerRadius(12)
+                            .lineLimit(1)
                     }
                 }
             }

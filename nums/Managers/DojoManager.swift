@@ -149,25 +149,38 @@ struct GameModel: Identifiable, Equatable {
         // Remove "0x" prefix if present
         let hex = hexString.hasPrefix("0x") ? String(hexString.dropFirst(2)) : hexString
         
+        // Handle empty or zero slots
+        if hex.isEmpty || hex.trimmingCharacters(in: CharacterSet(charactersIn: "0")) == "" {
+            print("   📭 Slots empty or all zeros")
+            return []
+        }
+        
         // Convert hex string to BInt (big integer)
         guard var packed = BInt(hex, radix: 16) else {
             print("⚠️ Failed to parse slots hex: \(hexString)")
             return []
         }
         
+        print("   🔢 Unpacking slots: hex=\(hex), slotCount=\(slotCount), slotMax=\(slotMax)")
+        print("   📦 Packed value: \(packed)")
+        
         // SLOT_SIZE is the modulo value (slotMax + 1 to include 0)
         let slotSize = BInt(slotMax + 1)
         var result: Set<Int> = []
         
         // Unpack algorithm: extract slotCount values
+        // Each position stores the NUMBER that was placed in that slot (or 0 if empty)
         for index in 0..<slotCount {
             // Extract current value: packed % slotSize
             let value = packed % slotSize
             
-            // Convert to Int and check if slot is set (non-zero)
-            if let intValue = value.asInt(), intValue > 0 {
-                // Slot positions are 1-based (1-20)
-                result.insert(index + 1)
+            // Convert to Int and check if slot has a number (non-zero)
+            if let intValue = value.asInt() {
+                print("      Slot \(index + 1): value=\(intValue)")
+                if intValue > 0 {
+                    // Slot position (index+1) contains a number, so it's "set"
+                    result.insert(index + 1)
+                }
             }
             
             // Shift to next value: packed / slotSize
@@ -179,6 +192,7 @@ struct GameModel: Identifiable, Equatable {
             }
         }
         
+        print("   ✅ Set slots: \(result.sorted())")
         return result
     }
 }
