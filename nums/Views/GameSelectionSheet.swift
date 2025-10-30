@@ -259,7 +259,7 @@ struct GameSelectionSheet: View {
             do {
                 let gameId = try await dojoManager.buyGame(
                     username: username,
-                    tournamentId: tournament.id,
+                    tournamentId: UInt64(tournament.id),
                     sessionManager: sessionManager
                 )
                 
