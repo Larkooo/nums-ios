@@ -21,6 +21,7 @@ struct MainView: View {
     @State private var isSoundEnabled = true
     @State private var currentTime = Date() // For updating countdown timer
     @State private var sessionInfoDetent: PresentationDetent = .medium
+    @State private var isLoadingGames = false
     
     // Check if session is valid (not expired and not revoked)
     private var isSessionValid: Bool {
@@ -432,6 +433,20 @@ struct MainView: View {
                     // Entries
                     ScrollView {
                         LazyVStack(spacing: 8) {
+                            // Show loading indicator on first load
+                            if dojoManager.isLoadingLeaderboard && leaderboard.isEmpty {
+                                VStack(spacing: 16) {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .scaleEffect(1.5)
+                                    Text("Loading leaderboard...")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 40)
+                            }
+                            
                             ForEach(leaderboard) { entry in
                                 HStack {
                                     Text("\(entry.rank)")
@@ -542,7 +557,17 @@ struct MainView: View {
                 // Play Button
                 Button(action: {
                     if isSessionValid {
-                        showGameSelection = true
+                        // Load games before showing the sheet
+                        isLoadingGames = true
+                        Task {
+                            if let userAddress = sessionManager.sessionAddress {
+                                await dojoManager.fetchUserGames(for: userAddress)
+                            }
+                            await MainActor.run {
+                                isLoadingGames = false
+                                showGameSelection = true
+                            }
+                        }
                     } else {
                         // Prompt user to connect with new keypair
                         sessionManager.privateKey = generateRandomPrivateKey()
@@ -550,21 +575,28 @@ struct MainView: View {
                         sessionManager.openSessionInWebView()
                     }
                 }) {
-                    Text(isSessionValid ? "PLAY!" : "CONNECT TO PLAY")
-                        .font(.system(size: 28, weight: .black, design: .rounded))
-                        .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 20)
-                        .background(
-                            LinearGradient(
-                                colors: [Color.yellow, Color.orange],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
+                    HStack(spacing: 12) {
+                        if isLoadingGames {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: Color(red: 0.2, green: 0.15, blue: 0.4)))
+                        }
+                        Text(isLoadingGames ? "LOADING..." : (isSessionValid ? "PLAY!" : "CONNECT TO PLAY"))
+                            .font(.system(size: 28, weight: .black, design: .rounded))
+                            .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.yellow, Color.orange],
+                            startPoint: .top,
+                            endPoint: .bottom
                         )
-                        .cornerRadius(16)
-                        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+                    )
+                    .cornerRadius(16)
+                    .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
                 }
+                .disabled(isLoadingGames)
                 .padding(.horizontal, 16)
             }
         }

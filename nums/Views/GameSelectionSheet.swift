@@ -173,13 +173,8 @@ struct GameSelectionSheet: View {
                 currentTime = Date()
             }
             
-            // Fetch user's games when sheet opens
-            if let userAddress = sessionManager.sessionAddress {
-                print("🎮 GameSelectionSheet opened for user: \(userAddress)")
-                Task {
-                    await dojoManager.fetchUserGames(for: userAddress)
-                }
-            }
+            // Games are already loaded before this sheet is shown (in MainView Play button)
+            // No need to fetch here
         }
         .onDisappear {
             // Resume leaderboard polling when returning to main view
