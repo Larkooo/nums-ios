@@ -1071,6 +1071,160 @@ class DojoManager: ObservableObject {
         }
     }
     
+    // MARK: - User Games
+    
+    func fetchUserGames(for accountAddress: String) async {
+        guard let client = toriiClient else {
+            print("⚠️ Torii client not initialized")
+            return
+        }
+        
+        guard !accountAddress.isEmpty else {
+            print("⚠️ Invalid account address")
+            return
+        }
+        
+        await MainActor.run {
+            self.isLoadingGames = true
+        }
+        
+        do {
+            print("🎮 Fetching games for user: \(accountAddress)...")
+            
+            // Query for game tokens owned by this user
+            let tokenBalanceQuery = TokenBalanceQuery(
+                contractAddresses: [Constants.denshokanAddress],
+                accountAddresses: [accountAddress],
+                tokenIds: [],
+                pagination: Pagination(
+                    cursor: nil,
+                    limit: 100,
+                    direction: .forward,
+                    orderBy: []
+                )
+            )
+            
+            let tokenBalances = try client.tokenBalances(query: tokenBalanceQuery)
+            
+            print("📦 Found \(tokenBalances.items.count) token balances for user")
+            
+            // Extract token IDs from balances
+            let tokenIds = tokenBalances.items.compactMap { $0.tokenId }
+            
+            if tokenIds.isEmpty {
+                print("ℹ️ No game tokens found for user")
+                await MainActor.run {
+                    self.games = []
+                    self.isLoadingGames = false
+                }
+                return
+            }
+            
+            // Now fetch the actual tokens with their attributes to filter by "Minted By"
+            let tokenQuery = TokenQuery(
+                contractAddresses: [Constants.denshokanAddress],
+                tokenIds: tokenIds,
+                attributeFilters: [
+                    AttributeFilter(
+                        attributeName: "Minted By",
+                        attributeValue: Constants.gameAddress
+                    )
+                ],
+                pagination: Pagination(
+                    cursor: nil,
+                    limit: 100,
+                    direction: .forward,
+                    orderBy: []
+                )
+            )
+            
+            let tokens = try client.tokens(query: tokenQuery)
+            
+            print("🎮 Found \(tokens.items.count) game tokens minted by game contract")
+            
+            // Build Game objects
+            let games = tokens.items.compactMap { token -> Game? in
+                guard let tokenId = token.tokenId else { return nil }
+                
+                return Game(
+                    id: tokenId,
+                    tokenId: tokenId,
+                    contractAddress: token.contractAddress,
+                    balance: "1",
+                    accountAddress: accountAddress
+                )
+            }
+            
+            await MainActor.run {
+                self.games = games
+                self.isLoadingGames = false
+                print("✅ User games loaded: \(games.count) games")
+            }
+            
+            // Now fetch game models for each token
+            if !games.isEmpty {
+                await fetchGameModelsForUser(games: games)
+            }
+            
+        } catch {
+            await MainActor.run {
+                self.errorMessage = "Failed to fetch games: \(error.localizedDescription)"
+                self.isLoadingGames = false
+                print("❌ Games fetch error: \(error)")
+            }
+        }
+    }
+    
+    private func fetchGameModelsForUser(games: [Game]) async {
+        guard let client = toriiClient else { return }
+        
+        print("🎮 Fetching game models for \(games.count) games...")
+        
+        do {
+            // Build a keys clause to fetch all game entities at once
+            let gameIds = games.map { $0.tokenId }
+            
+            for gameId in gameIds {
+                // Fetch each game model individually
+                let keysClause = KeysClause(
+                    keys: [gameId],
+                    patternMatching: .variableLen,
+                    models: ["NUMS-Game"]
+                )
+                let clause = Clause.keys(clause: keysClause)
+                
+                let query = Query(
+                    worldAddresses: [],
+                    pagination: Pagination(
+                        cursor: nil,
+                        limit: 1,
+                        direction: .forward,
+                        orderBy: []
+                    ),
+                    clause: clause,
+                    noHashedKeys: false,
+                    models: ["NUMS-Game"],
+                    historical: false
+                )
+                
+                let pageEntity = try client.entities(query: query)
+                
+                if let entity = pageEntity.items.first {
+                    if let gameModel = parseGameModel(from: entity, gameId: gameId) {
+                        await MainActor.run {
+                            self.gameModels[gameModel.id] = gameModel
+                        }
+                    }
+                }
+            }
+            
+            print("✅ Game models fetched: \(await MainActor.run { self.gameModels.count }) models")
+            
+        } catch {
+            print("❌ Failed to fetch game models: \(error.localizedDescription)")
+        }
+    }
+    
     // MARK: - Game Subscription (Per-Game)
     
     func subscribeToGame(_ gameId: String) async {

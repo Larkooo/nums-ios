@@ -6,55 +6,9 @@ struct GameSelectionSheet: View {
     @Environment(\.dismiss) var dismiss
     @State private var currentTime = Date()
     
-    // Helper function to normalize Starknet addresses for comparison
-    private func normalizeAddress(_ address: String) -> String {
-        // Remove 0x prefix and convert to lowercase
-        var normalized = address.lowercased()
-        if normalized.hasPrefix("0x") {
-            normalized = String(normalized.dropFirst(2))
-        }
-        
-        // Remove leading zeros
-        while normalized.hasPrefix("0") && normalized.count > 1 {
-            normalized = String(normalized.dropFirst())
-        }
-        
-        return normalized
-    }
-    
-    // Filter games to show only the current user's games
+    // User's games (already filtered by fetchUserGames)
     private var userGames: [Game] {
-        guard let rawAddress = sessionManager.sessionAddress else {
-            print("⚠️ No session address available")
-            return []
-        }
-        
-        // Normalize user address (remove 0x prefix and leading zeros)
-        let normalizedUserAddress = normalizeAddress(rawAddress)
-        
-        // Filter games, normalizing each game's account address the same way
-        let filtered = dojoManager.games.filter { game in
-            let normalizedGameAddress = normalizeAddress(game.accountAddress)
-            return normalizedGameAddress == normalizedUserAddress
-        }
-        
-        print("🎮 User address (raw): \(rawAddress)")
-        print("🎮 User address (normalized): \(normalizedUserAddress)")
-        print("🎮 Total games in system: \(dojoManager.games.count)")
-        print("🎮 User's games found: \(filtered.count)")
-        
-        if dojoManager.games.count > 0 && filtered.isEmpty {
-            print("⚠️ Games exist but none match user address")
-            print("📋 Sample game addresses (first 5):")
-            for (index, game) in dojoManager.games.prefix(5).enumerated() {
-                let normalizedGameAddr = normalizeAddress(game.accountAddress)
-                let matches = normalizedGameAddr == normalizedUserAddress ? "✅ MATCH" : "❌"
-                print("  \(index + 1). Raw: \(game.accountAddress)")
-                print("       Normalized: \(normalizedGameAddr) \(matches)")
-            }
-        }
-        
-        return filtered
+        return dojoManager.games
     }
     
     private var tournamentName: String {
@@ -211,11 +165,12 @@ struct GameSelectionSheet: View {
                 currentTime = Date()
             }
             
-            // Debug: Check what games are loaded
+            // Fetch user's games when sheet opens
             if let userAddress = sessionManager.sessionAddress {
                 print("🎮 GameSelectionSheet opened for user: \(userAddress)")
-                print("🎮 Total games loaded: \(dojoManager.games.count)")
-                print("🎮 User games filtered: \(userGames.count)")
+                Task {
+                    await dojoManager.fetchUserGames(for: userAddress)
+                }
             }
         }
     }
