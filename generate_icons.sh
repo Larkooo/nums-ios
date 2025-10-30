@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Icon Generator Script for NUMS App
-# This script generates all required iOS app icon sizes from a single 1024x1024 PNG
+# Generates all required iOS app icon sizes from SVG with custom background
 
 # Check if ImageMagick is installed
 if ! command -v magick &> /dev/null
@@ -10,19 +10,35 @@ then
     brew install imagemagick
 fi
 
+# Check if librsvg is installed (for better SVG rendering)
+if ! command -v rsvg-convert &> /dev/null
+then
+    echo "📦 Installing librsvg for high-quality SVG rendering..."
+    brew install librsvg
+fi
+
+# Source SVG
+SVG_FILE="nums/Assets.xcassets/nums-icon.imageset/nums-icon.svg"
+
 # Check if source icon exists
-if [ ! -f "icon-1024.png" ]; then
-    echo "❌ Error: icon-1024.png not found in current directory"
-    echo "Please create a 1024x1024 PNG icon file named 'icon-1024.png'"
+if [ ! -f "$SVG_FILE" ]; then
+    echo "❌ Error: $SVG_FILE not found"
     exit 1
 fi
 
-echo "🎨 Generating all required icon sizes..."
+echo "🎨 Generating all required icon sizes from SVG..."
+echo "📁 Source: $SVG_FILE"
 
 # Output directory
 OUTPUT_DIR="nums/Assets.xcassets/AppIcon.appiconset"
 
-# Array of sizes needed
+# Background color (customize this!)
+# Options:
+# - Solid color: "#5931FF" (purple)
+# - Gradient: Use ImageMagick to create gradient background
+BACKGROUND_COLOR="#5931FF"  # Purple matching your app theme
+
+# Array of all sizes needed: size:filename1:filename2:...
 declare -a sizes=(
     "20:20.png"
     "29:29.png"
@@ -52,17 +68,32 @@ for size_entry in "${sizes[@]}"; do
         
         filename="${PARTS[$i]}"
         echo "  ✓ Generating ${size}x${size} → ${filename}"
-        magick convert icon-1024.png -resize ${size}x${size} "${OUTPUT_DIR}/${filename}"
+        
+        # Step 1: Convert SVG to PNG at target size (high quality, no interpolation)
+        rsvg-convert -w ${size} -h ${size} "$SVG_FILE" -o "${OUTPUT_DIR}/temp_icon.png"
+        
+        # Step 2: Create background and composite
+        magick convert -size ${size}x${size} xc:"${BACKGROUND_COLOR}" \
+            "${OUTPUT_DIR}/temp_icon.png" \
+            -gravity center \
+            -composite \
+            "${OUTPUT_DIR}/${filename}"
+        
+        # Clean up temp file
+        rm "${OUTPUT_DIR}/temp_icon.png"
     done
 done
 
+echo ""
 echo "✅ All icons generated successfully!"
 echo ""
 echo "📱 Icon files created in: ${OUTPUT_DIR}"
+echo "🎨 Background color: ${BACKGROUND_COLOR}"
+echo ""
+echo "💡 To change the background color, edit this script and modify BACKGROUND_COLOR"
 echo ""
 echo "Next steps:"
 echo "1. Open your project in Xcode"
 echo "2. Check Assets.xcassets/AppIcon.appiconset"
-echo "3. All icons should be filled in"
+echo "3. All icons should be filled in with purple background"
 echo "4. Build and archive your app"
-
