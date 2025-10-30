@@ -1129,18 +1129,14 @@ class DojoManager: ObservableObject {
         // Create both calls
         // VRF request_random(caller: ContractAddress, source: Source)
         // Source enum: Nonce(ContractAddress) = type 0, Salt(felt252) = type 1
-        // Using Source::Nonce with player's account address for unique randomness per player
-        guard let accountAddress = await MainActor.run(body: { sessionManager.sessionAddress }) else {
-            throw NSError(domain: "DojoManager", code: 4, userInfo: [NSLocalizedDescriptionKey: "No account address available"])
-        }
-        
+        // Using Source::Salt with game ID for unique randomness per game
         let vrfCall = Call(
             contractAddress: Constants.vrfAddress,
             entrypoint: "request_random",
             calldata: [
                 Constants.gameAddress,  // caller: the game contract
-                "0x0",                  // source type: 0 = Nonce
-                accountAddress          // source data: player's address for Nonce
+                "0x1",                  // source type: 1 = Salt
+                gameIdFelt              // source data: game ID as salt
             ]
         )
         
