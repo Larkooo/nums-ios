@@ -21,7 +21,6 @@ struct MainView: View {
     @State private var isSoundEnabled = true
     @State private var currentTime = Date() // For updating countdown timer
     @State private var sessionInfoDetent: PresentationDetent = .medium
-    @State private var isLoadingGames = false
     
     // Check if session is valid (not expired and not revoked)
     private var isSessionValid: Bool {
@@ -558,14 +557,12 @@ struct MainView: View {
                 // Play Button
                 Button(action: {
                     if isSessionValid {
-                        // Load games before showing the sheet
-                        isLoadingGames = true
+                        // Load games in background and show sheet when ready
                         Task {
                             if let userAddress = sessionManager.sessionAddress {
                                 await dojoManager.fetchUserGames(for: userAddress)
                             }
                             await MainActor.run {
-                                isLoadingGames = false
                                 showGameSelection = true
                             }
                         }
@@ -576,28 +573,21 @@ struct MainView: View {
                         sessionManager.openSessionInWebView()
                     }
                 }) {
-                    HStack(spacing: 12) {
-                        if isLoadingGames {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: Color(red: 0.2, green: 0.15, blue: 0.4)))
-                        }
-                        Text(isLoadingGames ? "LOADING..." : (isSessionValid ? "PLAY!" : "CONNECT TO PLAY"))
-                            .font(.system(size: 28, weight: .black, design: .rounded))
-                            .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
-                    .background(
-                        LinearGradient(
-                            colors: [Color.yellow, Color.orange],
-                            startPoint: .top,
-                            endPoint: .bottom
+                    Text(isSessionValid ? "PLAY!" : "CONNECT TO PLAY")
+                        .font(.system(size: 28, weight: .black, design: .rounded))
+                        .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.yellow, Color.orange],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
                         )
-                    )
-                    .cornerRadius(16)
-                    .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+                        .cornerRadius(16)
+                        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
                 }
-                .disabled(isLoadingGames)
                 .padding(.horizontal, 16)
             }
         }
