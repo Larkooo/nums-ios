@@ -77,7 +77,7 @@ struct GameView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 12)
                 
-                // Slots Grid (2 columns, 10 rows) - Full width and centered
+                // Slots Grid (2 columns, 10 rows) - Centered with padding
                 VStack(spacing: 10) {
                     ForEach(0..<10, id: \.self) { row in
                         HStack(spacing: 12) {
@@ -105,7 +105,7 @@ struct GameView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 40)
                 
                 Spacer(minLength: 8)
                 
