@@ -23,7 +23,6 @@ struct GameView: View {
     @State private var slotValues: [UInt16] = []
     @State private var isSettingSlot = false
     @State private var selectedSlot: Int? = nil
-    @State private var dragOffset: CGFloat = 0
     
     var body: some View {
         ZStack {
@@ -81,6 +80,8 @@ struct GameView: View {
                 .padding(.top, 4)
                 .padding(.bottom, 12)
                 
+                Spacer()
+                
                 // Slots Grid (2 columns, 10 rows) - Centered with padding
                 VStack(spacing: 6) {
                     ForEach(0..<10, id: \.self) { row in
@@ -111,7 +112,7 @@ struct GameView: View {
                 }
                 .padding(.horizontal, 40)
                 
-                Spacer(minLength: 16)
+                Spacer()
                 
                 // Bottom Score and Reward Info
                 HStack(spacing: 0) {
@@ -193,27 +194,6 @@ struct GameView: View {
                 Color.clear.frame(height: 0)
             }
         }
-        .offset(x: dragOffset)
-        .gesture(
-            DragGesture()
-                .onChanged { gesture in
-                    // Only allow dragging from left edge (swipe right)
-                    if gesture.translation.width > 0 {
-                        dragOffset = gesture.translation.width
-                    }
-                }
-                .onEnded { gesture in
-                    if gesture.translation.width > 100 {
-                        // Swipe threshold met, dismiss
-                        dismiss()
-                    } else {
-                        // Animate back
-                        withAnimation(.spring()) {
-                            dragOffset = 0
-                        }
-                    }
-                }
-        )
         .navigationBarHidden(true)
         .onAppear {
             print("🎮 GameView appeared for token: \(gameTokenId), isNewGame: \(isNewGame)")

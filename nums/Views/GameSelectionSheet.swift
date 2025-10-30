@@ -37,10 +37,11 @@ struct GameSelectionSheet: View {
     }
     
     var body: some View {
-        ZStack {
-            // Purple background
-            Color(red: 0.349, green: 0.122, blue: 1.0)
-                .ignoresSafeArea()
+        NavigationStack {
+            ZStack {
+                // Purple background
+                Color(red: 0.349, green: 0.122, blue: 1.0)
+                    .ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // Custom Header with Close Button
@@ -158,6 +159,8 @@ struct GameSelectionSheet: View {
                 }
             }
             .padding(.top, 20)
+            }
+            .navigationBarHidden(true)
         }
         .onAppear {
             // Start timer to update countdown every second
@@ -180,7 +183,6 @@ struct GameRow: View {
     let game: Game
     @ObservedObject var dojoManager: DojoManager
     @EnvironmentObject var sessionManager: SessionManager
-    @State private var showGameView = false
     
     // Check if a NUMS-Game model exists for this token
     private var hasGameModel: Bool {
@@ -231,10 +233,14 @@ struct GameRow: View {
             Spacer()
             
             // Play/Continue button
-            Button(action: {
-                print("🎮 \(hasGameModel ? "Continue" : "Start") game: \(game.tokenId)")
-                showGameView = true
-            }) {
+            NavigationLink(destination: GameView(
+                gameTokenId: game.tokenId,
+                isNewGame: !hasGameModel
+            )
+            .environmentObject(dojoManager)
+            .environmentObject(sessionManager)
+            .navigationBarHidden(true)
+            ) {
                 Group {
                     if hasGameModel {
                         Text("Continue")
@@ -267,14 +273,6 @@ struct GameRow: View {
         .padding(16)
         .background(Color.white.opacity(0.1))
         .cornerRadius(16)
-        .fullScreenCover(isPresented: $showGameView) {
-            GameView(
-                gameTokenId: game.tokenId,
-                isNewGame: !hasGameModel
-            )
-            .environmentObject(dojoManager)
-            .environmentObject(sessionManager)
-        }
     }
 }
 
