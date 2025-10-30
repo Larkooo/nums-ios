@@ -229,6 +229,7 @@ struct GameSelectionSheet: View {
                 .padding(.top, 20)
                 .padding(.bottom, 20)
             }
+            }
             .navigationBarHidden(true)
         }
         .onAppear {
