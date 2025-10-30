@@ -118,6 +118,18 @@ struct MainView: View {
         }
     }
     
+    private func loadMoreLeaderboardEntries() {
+        guard let tournamentId = dojoManager.selectedTournament?.id,
+              dojoManager.hasMoreLeaderboardEntries,
+              !dojoManager.isLoadingLeaderboard else {
+            return
+        }
+        
+        Task {
+            await dojoManager.loadMoreLeaderboard(tournamentId: tournamentId)
+        }
+    }
+    
     var body: some View {
         ZStack {
             // Purple background
@@ -359,6 +371,23 @@ struct MainView: View {
                                 }
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 8)
+                                .onAppear {
+                                    // Load more when we're near the end (within last 10 items)
+                                    if entry.id == leaderboard[max(0, leaderboard.count - 10)].id {
+                                        loadMoreLeaderboardEntries()
+                                    }
+                                }
+                            }
+                            
+                            // Loading indicator at bottom
+                            if dojoManager.isLoadingLeaderboard {
+                                HStack {
+                                    Spacer()
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    Spacer()
+                                }
+                                .padding(.vertical, 20)
                             }
                         }
                     }

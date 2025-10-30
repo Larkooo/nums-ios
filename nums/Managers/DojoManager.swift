@@ -209,9 +209,12 @@ class DojoManager: ObservableObject {
     @Published var games: [Game] = []
     @Published var isLoadingGames = false
     
-    // Player Leaderboard (aggregated by player)
+    // Arcade Leaderboard (one entry per game)
     @Published var arcadeLeaderboard: [ArcadeLeaderboardEntry] = []
     @Published var isLoadingLeaderboard = false
+    @Published var hasMoreLeaderboardEntries = true
+    private var leaderboardOffset = 0
+    private let leaderboardPageSize = 50
     
     // Game Models (NUMS-Game entities mapped by token ID)
     @Published var gameModels: [String: GameModel] = [:]
@@ -351,18 +354,35 @@ class DojoManager: ObservableObject {
     
     // MARK: - SQL-Based Leaderboard
     
-    func fetchLeaderboardSQL(tournamentId: Int) async {
+    func fetchLeaderboardSQL(tournamentId: Int, reset: Bool = true) async {
         guard let client = toriiClient else {
             print("⚠️ Torii client not initialized")
             return
         }
+        
+        // Reset pagination state if needed
+        if reset {
+            await MainActor.run {
+                self.leaderboardOffset = 0
+                self.arcadeLeaderboard = []
+                self.hasMoreLeaderboardEntries = true
+            }
+        }
+        
+        // Don't fetch if already loading or no more entries
+        let canLoad = await MainActor.run {
+            !self.isLoadingLeaderboard && self.hasMoreLeaderboardEntries
+        }
+        
+        guard canLoad else { return }
         
         await MainActor.run {
             self.isLoadingLeaderboard = true
         }
         
         do {
-            print("📊 Fetching leaderboard via SQL for tournament #\(tournamentId)...")
+            let currentOffset = await MainActor.run { self.leaderboardOffset }
+            print("📊 Fetching leaderboard via SQL for tournament #\(tournamentId) (offset: \(currentOffset))...")
             
             // SQL query to get arcade-style leaderboard (one entry per game)
             let query = """
@@ -378,7 +398,7 @@ class DojoManager: ObservableObject {
                 AND ta.trait_value = '\(Constants.gameAddress)'
                 AND g.tournament_id = \(tournamentId)
             ORDER BY g.score DESC
-            LIMIT 1000
+            LIMIT \(leaderboardPageSize) OFFSET \(currentOffset)
             """
             
             let rows = try client.sql(query: query)
@@ -440,11 +460,19 @@ class DojoManager: ObservableObject {
                 }
             }
             
-            // Already sorted by score DESC in SQL query
+            // Update state
             await MainActor.run {
-                self.arcadeLeaderboard = entries
+                // Append new entries to existing ones
+                self.arcadeLeaderboard.append(contentsOf: entries)
+                self.leaderboardOffset += entries.count
+                
+                // If we got fewer entries than page size, no more to load
+                if entries.count < self.leaderboardPageSize {
+                    self.hasMoreLeaderboardEntries = false
+                }
+                
                 self.isLoadingLeaderboard = false
-                print("✅ SQL Leaderboard loaded: \(entries.count) entries (arcade-style)")
+                print("✅ SQL Leaderboard loaded: \(entries.count) new entries (total: \(self.arcadeLeaderboard.count))")
             }
             
         } catch {
@@ -454,6 +482,10 @@ class DojoManager: ObservableObject {
                 print("❌ SQL Leaderboard error: \(error)")
             }
         }
+    }
+    
+    func loadMoreLeaderboard(tournamentId: Int) async {
+        await fetchLeaderboardSQL(tournamentId: tournamentId, reset: false)
     }
     
     private var usernameCache: [String: String] = [:]
