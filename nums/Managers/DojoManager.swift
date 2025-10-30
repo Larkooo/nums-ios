@@ -184,24 +184,29 @@ struct GameModel: Identifiable, Equatable {
         let slotMask = BInt((1 << bitsPerSlot) - 1)
         var result: Set<Int> = []
         
-        // Calculate total bits used
-        let totalBits = slotCount * bitsPerSlot
+        // Calculate total bits in the hex (felt252 = 252 bits, but often padded to 256 for display)
+        let hexBits = hex.count * 4 // Each hex digit is 4 bits
+        let slotsBits = slotCount * bitsPerSlot // Total bits for all slots
+        
+        print("   📏 Hex bits: \(hexBits), Slots need: \(slotsBits) bits")
         
         // Extract each slot by shifting and masking
         // Slots are packed from HIGH to LOW: slot 20 at MSB, slot 1 at LSB
+        // Slots start from the MSB of the felt252
         print("   📋 Extracting slot values (slot 20 → slot 1):")
         for slotIndex in 0..<slotCount {
-            // Slot 20 is at the highest bits, slot 1 is at the lowest bits
-            // So for slot N (1-20), we want bits at position: totalBits - (21-N)*bitsPerSlot
             let slotNumber = slotCount - slotIndex // 20, 19, 18, ..., 1
-            let bitShift = totalBits - ((slotIndex + 1) * bitsPerSlot)
+            
+            // Slot 20 is at the top bits, slot 1 is lower
+            // Calculate bit position from the RIGHT (LSB = bit 0)
+            let bitShift = (hexBits - (slotIndex + 1) * bitsPerSlot)
             
             // Shift right to bring this slot's bits to the bottom, then mask
             let slotValue = (packed >> bitShift) & slotMask
             
             if let intValue = slotValue.asInt() {
                 if intValue > 0 {
-                    print("      Slot \(slotNumber): value=\(intValue) (hex: \(String(intValue, radix: 16))) ✓")
+                    print("      Slot \(slotNumber): value=\(intValue) (0x\(String(intValue, radix: 16))) at bits \(bitShift)-\(bitShift+bitsPerSlot-1) ✓")
                     result.insert(slotNumber)
                 }
             }
