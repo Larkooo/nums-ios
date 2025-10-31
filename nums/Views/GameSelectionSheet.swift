@@ -11,9 +11,23 @@ struct GameSelectionSheet: View {
     @State private var buyError: String? = nil
     @State private var showBuyError = false
     
-    // User's games (already filtered by fetchUserGames)
+    // User's games (already filtered by fetchUserGames), sorted with active games first
     private var userGames: [Game] {
-        return dojoManager.games
+        return dojoManager.games.sorted { game1, game2 in
+            let model1 = dojoManager.gameModels[game1.tokenId]
+            let model2 = dojoManager.gameModels[game2.tokenId]
+            
+            let isOver1 = model1?.over ?? false
+            let isOver2 = model2?.over ?? false
+            
+            // Active games (not over) come first
+            if isOver1 != isOver2 {
+                return !isOver1 && isOver2
+            }
+            
+            // For games with the same status, sort by token ID (newest first)
+            return game1.tokenId > game2.tokenId
+        }
     }
     
     private var tournamentName: String {
@@ -160,11 +174,45 @@ struct GameSelectionSheet: View {
                     }
                     .frame(maxHeight: .infinity)
                 } else {
-                    // Games list
+                    // Games list with sections
                     ScrollView {
-                        VStack(spacing: 12) {
-                            ForEach(userGames) { game in
-                                GameRow(game: game, dojoManager: dojoManager)
+                        VStack(alignment: .leading, spacing: 20) {
+                            // Active Games Section
+                            let activeGames = userGames.filter { game in
+                                guard let model = dojoManager.gameModels[game.tokenId] else { return false }
+                                return !model.over
+                            }
+                            
+                            if !activeGames.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("ACTIVE GAMES")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(.white.opacity(0.6))
+                                        .padding(.horizontal, 4)
+                                    
+                                    ForEach(activeGames) { game in
+                                        GameRow(game: game, dojoManager: dojoManager)
+                                    }
+                                }
+                            }
+                            
+                            // Finished Games Section
+                            let finishedGames = userGames.filter { game in
+                                guard let model = dojoManager.gameModels[game.tokenId] else { return false }
+                                return model.over
+                            }
+                            
+                            if !finishedGames.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("FINISHED GAMES")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(.white.opacity(0.6))
+                                        .padding(.horizontal, 4)
+                                    
+                                    ForEach(finishedGames) { game in
+                                        GameRow(game: game, dojoManager: dojoManager)
+                                    }
+                                }
                             }
                         }
                         .padding(20)
@@ -314,6 +362,16 @@ struct GameRow: View {
         dojoManager.gameModels[game.tokenId]
     }
     
+    // Check if game is over
+    private var isGameOver: Bool {
+        gameModel?.over ?? false
+    }
+    
+    // Check if reward has been claimed
+    private var isRewardClaimed: Bool {
+        gameModel?.claimed ?? false
+    }
+    
     // Convert hex token ID to decimal
     private var gameIdDecimal: Int {
         // Remove "0x" prefix if present
@@ -327,37 +385,67 @@ struct GameRow: View {
         Int(gameModel?.score ?? 0)
     }
     
+    // Get reward amount
+    private var reward: Int {
+        Int(gameModel?.reward ?? 0)
+    }
+    
     var body: some View {
         HStack(spacing: 16) {
             // Game icon
             ZStack {
                 Circle()
-                    .fill(Color.white.opacity(0.1))
+                    .fill(isGameOver ? Color.red.opacity(0.2) : Color.white.opacity(0.1))
                     .frame(width: 60, height: 60)
                 
-                Image(systemName: "gamecontroller.fill")
+                Image(systemName: isGameOver ? "flag.checkered.circle.fill" : "gamecontroller.fill")
                     .font(.system(size: 24))
-                    .foregroundColor(.white)
+                    .foregroundColor(isGameOver ? Color.red.opacity(0.8) : .white)
             }
             
             // Game info
             VStack(alignment: .leading, spacing: 4) {
-                Text("Game #\(String(format: "%04d", gameIdDecimal))")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.white)
+                HStack(spacing: 8) {
+                    Text("Game #\(String(format: "%04d", gameIdDecimal))")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    if isGameOver {
+                        Text(isRewardClaimed ? "CLAIMED" : "FINISHED")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(isRewardClaimed ? Color.green : Color.orange)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(isRewardClaimed ? Color.green.opacity(0.2) : Color.orange.opacity(0.2))
+                            )
+                    }
+                }
                 
-                Text("Score: \(score)")
-                    .font(.system(size: 14))
-                    .foregroundColor(.white.opacity(0.7))
+                HStack(spacing: 12) {
+                    Text("Score: \(score)")
+                        .font(.system(size: 14))
+                        .foregroundColor(.white.opacity(0.7))
+                    
+                    if isGameOver && reward > 0 {
+                        Text("Reward: \(reward) NUMS")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(Color.yellow)
+                    }
+                }
             }
             
             Spacer()
             
-            // Start/Continue button
+            // Action button (Start/Continue/View)
             Button(action: {
-                // Double-check if game is actually started
-                if hasGameModel {
-                    // Game already started with valid number, just open it
+                if isGameOver {
+                    // For game over games, just view the results
+                    print("🎮 View game results: \(game.tokenId)")
+                    showGameView = true
+                } else if hasGameModel {
+                    // Game already started with valid number, continue it
                     print("🎮 Continue game: \(game.tokenId) (number: \(gameModel?.number ?? 0))")
                     showGameView = true
                 } else {
@@ -369,11 +457,15 @@ struct GameRow: View {
                 HStack(spacing: 6) {
                     if isStartingGame {
                         ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: hasGameModel ? .white : Color(red: 0.2, green: 0.15, blue: 0.4)))
+                            .progressViewStyle(CircularProgressViewStyle(tint: Color(red: 0.2, green: 0.15, blue: 0.4)))
                             .scaleEffect(0.8)
                     }
                     Group {
-                        if hasGameModel {
+                        if isGameOver {
+                            Text("View")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                        } else if hasGameModel {
                             Text("Continue")
                                 .font(.system(size: 14, weight: .bold))
                                 .foregroundColor(.white)
@@ -387,15 +479,17 @@ struct GameRow: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 .background(
-                    hasGameModel 
-                        ? AnyView(Color.white.opacity(0.2))
-                        : AnyView(
-                            LinearGradient(
-                                colors: [Color.yellow, Color.orange],
-                                startPoint: .top,
-                                endPoint: .bottom
+                    isGameOver
+                        ? AnyView(Color.white.opacity(0.15))
+                        : hasGameModel 
+                            ? AnyView(Color.white.opacity(0.2))
+                            : AnyView(
+                                LinearGradient(
+                                    colors: [Color.yellow, Color.orange],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
                             )
-                        )
                 )
                 .cornerRadius(12)
                 .lineLimit(1)
@@ -403,8 +497,19 @@ struct GameRow: View {
             .disabled(isStartingGame)
         }
         .padding(16)
-        .background(Color.white.opacity(0.1))
+        .background(
+            isGameOver 
+                ? Color.white.opacity(0.05)
+                : Color.white.opacity(0.1)
+        )
         .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(
+                    isGameOver ? Color.red.opacity(0.3) : Color.clear,
+                    lineWidth: isGameOver ? 1 : 0
+                )
+        )
         .fullScreenCover(isPresented: $showGameView) {
             GameView(
                 gameTokenId: game.tokenId,
