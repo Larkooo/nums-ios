@@ -288,7 +288,8 @@ struct TournamentCard: View {
                     
                     Spacer()
                 }
-                .padding(.left, 18)
+                .padding(.vertical, 18)
+                .padding(.leading, 18)
                 
                 // Time remaining banner
                 HStack {
