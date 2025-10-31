@@ -76,6 +76,72 @@ struct LeaderboardPlayer: Identifiable {
     let games: String
 }
 
+// Prize Model (NUMS-Prize entity)
+struct Prize: Identifiable {
+    let id: String // Unique ID: "\(tournamentId)-\(address)"
+    let tournamentId: Int
+    let address: String // Token contract address (STRK, ETH, etc.)
+    let amount: String // u128 as string (we'll format for display)
+    var customTokenName: String? // Fetched token name from RPC
+    
+    // Helper to get the token symbol for known addresses
+    var tokenSymbol: String {
+        // If we fetched a custom name, use it
+        if let customName = customTokenName, !customName.isEmpty {
+            return customName
+        }
+        
+        switch address.lowercased() {
+        case Constants.strkTokenAddress.lowercased():
+            return "STRK"
+        case Constants.ethTokenAddress.lowercased():
+            return "ETH"
+        default:
+            return "TOKEN"
+        }
+    }
+    
+    // Helper to format amount for display
+    var formattedAmount: String {
+        // Parse u128 string to BInt and format
+        if let amountInt = BInt(amount, radix: 10) {
+            // Divide by 10^18 to get human-readable amount
+            let divisor = BInt(10) ** 18
+            let tokens = amountInt / divisor
+            return "\(tokens)"
+        }
+        return amount
+    }
+    
+    // Helper to format amount compactly (e.g., 2M, 500K, 1.5B)
+    var compactFormattedAmount: String {
+        // Parse u128 string to BInt and format
+        guard let amountInt = BInt(amount, radix: 10) else {
+            return amount
+        }
+        
+        // Divide by 10^18 to get human-readable amount
+        let divisor = BInt(10) ** 18
+        let tokens = amountInt / divisor
+        
+        // Convert to Double for compact formatting
+        guard let doubleValue = Double(tokens.description) else {
+            return "\(tokens)"
+        }
+        
+        // Format with K, M, B suffixes
+        if doubleValue >= 1_000_000_000 {
+            return String(format: "%.1fB", doubleValue / 1_000_000_000)
+        } else if doubleValue >= 1_000_000 {
+            return String(format: "%.1fM", doubleValue / 1_000_000)
+        } else if doubleValue >= 1_000 {
+            return String(format: "%.1fK", doubleValue / 1_000)
+        } else {
+            return String(format: "%.0f", doubleValue)
+        }
+    }
+}
+
 // Game Model
 struct Game: Identifiable {
     let id: String // token_id
@@ -233,6 +299,13 @@ class DojoManager: ObservableObject {
     @Published var isLoadingTournaments = false
     @Published var showTournamentSelector = false
     
+    // Prizes (mapped by tournament ID)
+    @Published var prizes: [Int: [Prize]] = [:]
+    @Published var isLoadingPrizes = false
+    
+    // Token name cache (address -> name)
+    private var tokenNameCache: [String: String] = [:]
+    
     // Token Balance
     @Published var tokenBalance: BInt = 0
     @Published var isLoadingBalance = false
@@ -376,6 +449,13 @@ class DojoManager: ObservableObject {
                 print("✅ Tournaments loaded: \(self.tournaments.count) tournaments")
                 self.isLoadingTournaments = false
             }
+            
+            // Fetch prizes for all tournaments
+            await fetchAllPrizes()
+            
+            // Fetch token names for unknown prizes
+            await fetchTokenNamesForPrizes()
+            
         } catch {
             await MainActor.run {
                 self.errorMessage = "Failed to fetch tournaments: \(error.localizedDescription)"
@@ -383,6 +463,185 @@ class DojoManager: ObservableObject {
                 print("❌ Tournaments fetch error: \(error)")
             }
         }
+    }
+    
+    func fetchAllPrizes() async {
+        guard let client = toriiClient else {
+            print("⚠️ Torii client not initialized")
+            return
+        }
+        
+        await MainActor.run {
+            self.isLoadingPrizes = true
+        }
+        
+        do {
+            print("💎 Fetching all prizes...")
+            
+            // Create query for NUMS-Prize model - fetch all
+            let query = Query(
+                worldAddresses: [],
+                pagination: Pagination(
+                    cursor: nil,
+                    limit: 1000, // Fetch many prizes (multiple per tournament)
+                    direction: .forward,
+                    orderBy: []
+                ),
+                clause: nil,
+                noHashedKeys: false,
+                models: ["NUMS-Prize"],
+                historical: false
+            )
+            
+            let pageEntity = try client.entities(query: query)
+            
+            await MainActor.run {
+                // Parse all prize data from entities and group by tournament ID
+                var prizesByTournament: [Int: [Prize]] = [:]
+                
+                for entity in pageEntity.items {
+                    if let prize = self.parsePrize(from: entity) {
+                        if prizesByTournament[prize.tournamentId] == nil {
+                            prizesByTournament[prize.tournamentId] = []
+                        }
+                        prizesByTournament[prize.tournamentId]?.append(prize)
+                    }
+                }
+                
+                self.prizes = prizesByTournament
+                print("✅ Prizes loaded: \(pageEntity.items.count) total prizes across \(prizesByTournament.keys.count) tournaments")
+                self.isLoadingPrizes = false
+            }
+        } catch {
+            await MainActor.run {
+                self.errorMessage = "Failed to fetch prizes: \(error.localizedDescription)"
+                self.isLoadingPrizes = false
+                print("❌ Prizes fetch error: \(error)")
+            }
+        }
+    }
+    
+    // MARK: - Token Name Fetching
+    
+    func fetchTokenNamesForPrizes() async {
+        print("🏷️ Fetching token names for unknown prizes...")
+        
+        // Get all unique unknown token addresses
+        var unknownAddresses: Set<String> = []
+        await MainActor.run {
+            for (_, prizeList) in self.prizes {
+                for prize in prizeList {
+                    // Skip if it's a known token or already cached
+                    let isKnown = prize.address.lowercased() == Constants.strkTokenAddress.lowercased() ||
+                                  prize.address.lowercased() == Constants.ethTokenAddress.lowercased()
+                    if !isKnown && self.tokenNameCache[prize.address] == nil {
+                        unknownAddresses.insert(prize.address)
+                    }
+                }
+            }
+        }
+        
+        // Fetch names for each unknown address
+        for address in unknownAddresses {
+            if let tokenName = await fetchTokenName(address: address) {
+                await MainActor.run {
+                    self.tokenNameCache[address] = tokenName
+                    print("✅ Fetched token name: \(tokenName) for \(address.prefix(10))...")
+                    
+                    // Update prizes with the new token name
+                    for (tournamentId, prizeList) in self.prizes {
+                        var updatedPrizes: [Prize] = []
+                        for var prize in prizeList {
+                            if prize.address == address {
+                                prize.customTokenName = tokenName
+                            }
+                            updatedPrizes.append(prize)
+                        }
+                        self.prizes[tournamentId] = updatedPrizes
+                    }
+                }
+            }
+        }
+        
+        print("✅ Token name fetching complete")
+    }
+    
+    func fetchTokenName(address: String) async -> String? {
+        // Call Starknet RPC to get token symbol/name
+        guard let url = URL(string: rpcUrl) else {
+            return nil
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Starknet call: symbol() function selector
+        // selector for "symbol()" = 0x216b05c387bab9ac31918a3e61672f4618601f3c598a2f3f2710f37053e1ea4
+        let symbolSelector = "0x216b05c387bab9ac31918a3e61672f4618601f3c598a2f3f2710f37053e1ea4"
+        
+        let requestBody: [String: Any] = [
+            "jsonrpc": "2.0",
+            "method": "starknet_call",
+            "params": [
+                [
+                    "contract_address": address,
+                    "entry_point_selector": symbolSelector,
+                    "calldata": []
+                ],
+                "latest"
+            ],
+            "id": 1
+        ]
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                print("❌ RPC call failed for \(address.prefix(10))...")
+                return nil
+            }
+            
+            // Parse response
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let result = json["result"] as? [String] {
+                // Decode the felt252 response to string
+                if let symbolFelt = result.first {
+                    let symbol = decodeFelt252ToString(symbolFelt)
+                    return symbol
+                }
+            }
+        } catch {
+            print("❌ Error fetching token name for \(address.prefix(10))...: \(error)")
+        }
+        
+        return nil
+    }
+    
+    // Helper to decode felt252 to ASCII string
+    private func decodeFelt252ToString(_ felt: String) -> String {
+        // Remove 0x prefix
+        let hex = felt.hasPrefix("0x") ? String(felt.dropFirst(2)) : felt
+        
+        // Convert hex to bytes
+        var bytes: [UInt8] = []
+        var index = hex.startIndex
+        while index < hex.endIndex {
+            let nextIndex = hex.index(index, offsetBy: 2, limitedBy: hex.endIndex) ?? hex.endIndex
+            let byteString = String(hex[index..<nextIndex])
+            if let byte = UInt8(byteString, radix: 16) {
+                if byte != 0 { // Skip null bytes
+                    bytes.append(byte)
+                }
+            }
+            index = nextIndex
+        }
+        
+        // Convert bytes to string
+        return String(bytes: bytes, encoding: .utf8) ?? "TOKEN"
     }
     
     // MARK: - SQL-Based Leaderboard
@@ -733,6 +992,42 @@ class DojoManager: ObservableObject {
         )
     }
     
+    private func parsePrize(from entity: Entity) -> Prize? {
+        let models = entity.models
+        
+        guard let tournamentId = extractInt(from: models, key: "tournament_id") else {
+            print("⚠️ Prize missing tournament_id")
+            return nil
+        }
+        guard let address = extractString(from: models, key: "address") else {
+            print("⚠️ Prize missing address")
+            return nil
+        }
+        guard let amount = extractU128(from: models, key: "amount") else {
+            print("⚠️ Prize missing amount")
+            return nil
+        }
+        
+        return Prize(
+            id: "\(tournamentId)-\(address)",
+            tournamentId: tournamentId,
+            address: address,
+            amount: amount,
+            customTokenName: nil
+        )
+    }
+    
+    private func extractU128(from models: [Struct], key: String) -> String? {
+        for model in models {
+            for member in model.children {
+                if member.name == key {
+                    return extractU128FromTy(member.ty)
+                }
+            }
+        }
+        return nil
+    }
+    
     private func extractInt(from models: [Struct], key: String) -> Int? {
         for model in models {
             for member in model.children {
@@ -876,6 +1171,21 @@ class DojoManager: ObservableObject {
             default: return 0
             }
         default: return 0
+        }
+    }
+    
+    private func extractU128FromTy(_ ty: Ty) -> String? {
+        switch ty {
+        case .primitive(let primitive):
+            switch primitive {
+            case .u128(let value):
+                // u128 comes as Data, convert to decimal string
+                // The data is in big-endian format
+                let bigInt = BInt(bytes: value)
+                return bigInt.asString(radix: 10)
+            default: return nil
+            }
+        default: return nil
         }
     }
     

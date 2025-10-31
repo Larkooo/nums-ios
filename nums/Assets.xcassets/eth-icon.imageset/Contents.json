@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "controller-icon.svg",
+      "filename" : "eth-icon.svg",
       "idiom" : "universal"
     }
   ],
@@ -13,7 +13,4 @@
     "preserves-vector-representation" : true
   }
 }
-
-
-
 

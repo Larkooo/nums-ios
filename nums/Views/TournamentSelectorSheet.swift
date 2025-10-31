@@ -74,7 +74,8 @@ struct TournamentSelectorSheet: View {
                                             await dojoManager.selectTournament(tournament)
                                             dismiss()
                                         }
-                                    }
+                                    },
+                                    dojoManager: dojoManager
                                 )
                             }
                         }
@@ -92,6 +93,7 @@ struct TournamentCard: View {
     let tournament: Tournament
     let isSelected: Bool
     let onSelect: () -> Void
+    @ObservedObject var dojoManager: DojoManager
     @State private var currentTime = Date()
     
     private var isUpcoming: Bool {
@@ -240,11 +242,53 @@ struct TournamentCard: View {
                                     .foregroundColor(.white)
                             }
                         }
+                        
+                        // Prizes row
+                        if let prizes = dojoManager.prizes[tournament.id], !prizes.isEmpty {
+                            HStack(spacing: 4) {
+                                Image(systemName: "giftcard.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.orange.opacity(0.8))
+                                
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 6) {
+                                        ForEach(prizes) { prize in
+                                            HStack(spacing: 3) {
+                                                // Token icon
+                                                TokenIcon(
+                                                    tokenSymbol: prize.tokenSymbol,
+                                                    address: prize.address,
+                                                    size: 12
+                                                )
+                                                
+                                                Text("\(prize.compactFormattedAmount)")
+                                                    .font(.system(size: 11, weight: .semibold))
+                                                    .foregroundColor(.white)
+                                                    .lineLimit(1)
+                                                
+                                                Text(prize.tokenSymbol)
+                                                    .font(.system(size: 9, weight: .medium))
+                                                    .foregroundColor(.white.opacity(0.7))
+                                                    .lineLimit(1)
+                                                    .truncationMode(.tail)
+                                                    .frame(maxWidth: 40)
+                                            }
+                                            .padding(.horizontal, 5)
+                                            .padding(.vertical, 4)
+                                            .frame(height: 22)
+                                            .background(Color.white.opacity(0.1))
+                                            .cornerRadius(5)
+                                        }
+                                    }
+                                }
+                                .frame(maxHeight: 22)
+                            }
+                        }
                     }
                     
                     Spacer()
                 }
-                .padding(18)
+                .padding(.left, 18)
                 
                 // Time remaining banner
                 HStack {

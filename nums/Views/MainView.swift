@@ -478,9 +478,6 @@ struct MainView: View {
                 // Jackpot Header
                 VStack(spacing: 8) {
                     HStack {
-                        Image(systemName: "trophy.fill")
-                            .foregroundColor(.yellow)
-                        
                         Button(action: {
                             dojoManager.showTournamentSelector = true
                         }) {
@@ -589,6 +586,57 @@ struct MainView: View {
                                     Text("POWERS")
                                         .font(.system(size: 9, weight: .medium))
                                         .foregroundColor(.white.opacity(0.6))
+                                }
+                            }
+                        }
+                        
+                        // Prizes Section
+                        if let prizes = dojoManager.prizes[tournamentId], !prizes.isEmpty {
+                            Divider()
+                                .background(Color.white.opacity(0.2))
+                                .padding(.vertical, 8)
+                            
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "trophy.fill")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.yellow.opacity(0.9))
+                                    Text("PRIZE POOL")
+                                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                                
+                                // Prize chips
+                                HStack(spacing: 8) {
+                                    ForEach(prizes) { prize in
+                                        HStack(spacing: 6) {
+                                            // Token icon
+                                            TokenIcon(
+                                                tokenSymbol: prize.tokenSymbol,
+                                                address: prize.address,
+                                                size: 20
+                                            )
+                                            
+                                            VStack(alignment: .leading, spacing: 0) {
+                                                Text("\(prize.formattedAmount)")
+                                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                                    .foregroundColor(.white)
+                                                Text(prize.tokenSymbol)
+                                                    .font(.system(size: 10, weight: .medium))
+                                                    .foregroundColor(.white.opacity(0.6))
+                                            }
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            LinearGradient(
+                                                colors: [Color.white.opacity(0.15), Color.white.opacity(0.08)],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .cornerRadius(10)
+                                    }
                                 }
                             }
                         }
