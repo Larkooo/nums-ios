@@ -301,9 +301,13 @@ struct GameRow: View {
     @State private var startError: String? = nil
     @State private var showStartError = false
     
-    // Check if a NUMS-Game model exists for this token
+    // Check if a NUMS-Game model exists for this token AND game is actually started
     private var hasGameModel: Bool {
-        dojoManager.gameModels[game.tokenId] != nil
+        guard let model = dojoManager.gameModels[game.tokenId] else {
+            return false
+        }
+        // Check if game has been started (number should be > 0)
+        return model.number > 0
     }
     
     private var gameModel: GameModel? {
@@ -351,13 +355,14 @@ struct GameRow: View {
             
             // Start/Continue button
             Button(action: {
+                // Double-check if game is actually started
                 if hasGameModel {
-                    // Game already started, just open it
-                    print("🎮 Continue game: \(game.tokenId)")
+                    // Game already started with valid number, just open it
+                    print("🎮 Continue game: \(game.tokenId) (number: \(gameModel?.number ?? 0))")
                     showGameView = true
                 } else {
                     // Game needs to be started first
-                    print("🎮 Start game: \(game.tokenId)")
+                    print("🎮 Start game: \(game.tokenId) (no model or not started)")
                     startGame()
                 }
             }) {
