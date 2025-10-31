@@ -71,6 +71,10 @@
 			<string>com.nasr.nums</string>
 		</dict>
 	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Pixel-Game.otf</string>
+	</array>
 </dict>
 </plist>
 

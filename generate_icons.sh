@@ -32,11 +32,16 @@ echo "📁 Source: $SVG_FILE"
 # Output directory
 OUTPUT_DIR="nums/Assets.xcassets/AppIcon.appiconset"
 
-# Background color (customize this!)
-# Options:
-# - Solid color: "#5931FF" (purple)
-# - Gradient: Use ImageMagick to create gradient background
-BACKGROUND_COLOR="#5931FF"  # Purple matching your app theme
+# Background gradient colors (matching MainView.swift)
+# Top-left color: rgb(0.4, 0.2, 0.8) = #6633CC
+# Bottom-right color: rgb(0.3, 0.1, 0.6) = #4D1A99
+GRADIENT_COLOR_1="#6633CC"  # Top-left (lighter purple)
+GRADIENT_COLOR_2="#4D1A99"  # Bottom-right (darker purple)
+
+# Icon scale (percentage of canvas to fill with the icon)
+# Lower = more padding, higher = less padding
+# Recommended: 0.6 to 0.75 (60-75% of canvas)
+ICON_SCALE=0.65  # Icon will be 65% of the canvas size
 
 # Array of all sizes needed: size:filename1:filename2:...
 declare -a sizes=(
@@ -69,18 +74,27 @@ for size_entry in "${sizes[@]}"; do
         filename="${PARTS[$i]}"
         echo "  ✓ Generating ${size}x${size} → ${filename}"
         
-        # Step 1: Convert SVG to PNG at target size (high quality, no interpolation)
-        rsvg-convert -w ${size} -h ${size} "$SVG_FILE" -o "${OUTPUT_DIR}/temp_icon.png"
+        # Calculate icon size (scaled down to leave padding)
+        icon_size=$(printf "%.0f" $(echo "$size * $ICON_SCALE" | bc))
         
-        # Step 2: Create background and composite
-        magick convert -size ${size}x${size} xc:"${BACKGROUND_COLOR}" \
+        # Step 1: Create gradient background (perfect diagonal top-left to bottom-right)
+        magick -size ${size}x${size} \
+            -define gradient:angle=135 \
+            gradient:"${GRADIENT_COLOR_1}-${GRADIENT_COLOR_2}" \
+            "${OUTPUT_DIR}/temp_bg.png"
+        
+        # Step 2: Convert SVG logo to PNG preserving aspect ratio
+        rsvg-convert -a -w ${icon_size} -h ${icon_size} "$SVG_FILE" -o "${OUTPUT_DIR}/temp_icon.png"
+        
+        # Step 3: Composite logo on top of gradient background
+        magick "${OUTPUT_DIR}/temp_bg.png" \
             "${OUTPUT_DIR}/temp_icon.png" \
             -gravity center \
             -composite \
             "${OUTPUT_DIR}/${filename}"
         
-        # Clean up temp file
-        rm "${OUTPUT_DIR}/temp_icon.png"
+        # Clean up temp files
+        rm -f "${OUTPUT_DIR}/temp_bg.png" "${OUTPUT_DIR}/temp_icon.png"
     done
 done
 
@@ -88,12 +102,15 @@ echo ""
 echo "✅ All icons generated successfully!"
 echo ""
 echo "📱 Icon files created in: ${OUTPUT_DIR}"
-echo "🎨 Background color: ${BACKGROUND_COLOR}"
+echo "🎨 Background gradient: ${GRADIENT_COLOR_1} → ${GRADIENT_COLOR_2}"
+echo "📏 Icon scale: ${ICON_SCALE}"
 echo ""
-echo "💡 To change the background color, edit this script and modify BACKGROUND_COLOR"
+echo "💡 Customization:"
+echo "   - To change gradient colors, edit GRADIENT_COLOR_1 and GRADIENT_COLOR_2"
+echo "   - To adjust icon size/padding, edit ICON_SCALE (0.6 = more padding, 0.75 = less padding)"
 echo ""
 echo "Next steps:"
 echo "1. Open your project in Xcode"
 echo "2. Check Assets.xcassets/AppIcon.appiconset"
-echo "3. All icons should be filled in with purple background"
+echo "3. Icons should show clean gradient background with centered logo"
 echo "4. Build and archive your app"

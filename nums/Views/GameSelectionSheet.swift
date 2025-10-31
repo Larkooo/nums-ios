@@ -55,55 +55,39 @@ struct GameSelectionSheet: View {
             .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Custom Header
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Enter \(tournamentName)")
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.white)
-                        Text("Tournament ends in \(timeRemaining)")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.7))
+                // Custom Header (similar to HowToPlaySheet)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(tournamentName)
+                            .font(.system(size: 32, weight: .black, design: .rounded))
+                            .foregroundColor(Color(red: 0.7, green: 0.6, blue: 1.0))
+                        Text("Ends in \(timeRemaining)")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
                     }
-                    
-                    Spacer()
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
-                .padding(.bottom, 16)
+                .padding(.bottom, 20)
                 
                 // Entry Options
-                HStack(spacing: 12) {
-                    // Share on X - Free
-                    Button(action: {
-                        // TODO: Share on X action
-                    }) {
-                        Text("Share on X")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.white.opacity(0.5))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Color.white.opacity(0.2))
-                            .cornerRadius(12)
-                    }
-                    .disabled(true)
-                    
-                    // Play with Nums - 2000 NUMS (Active)
+                VStack(spacing: 12) {
+                    // Play with Nums - 2000 NUMS (Primary, bigger)
                     Button(action: {
                         buyNewGame()
                     }) {
-                        HStack(spacing: 6) {
+                        HStack(spacing: 8) {
                             if isBuyingGame {
                                 ProgressView()
                                     .progressViewStyle(CircularProgressViewStyle(tint: Color(red: 0.2, green: 0.15, blue: 0.4)))
-                                    .scaleEffect(0.8)
+                                    .scaleEffect(1.2)
                             }
-                            Text(isBuyingGame ? "Buying..." : "\(Constants.gameCostNums) Nums")
-                                .font(.system(size: 16, weight: .bold))
+                            Text(isBuyingGame ? "BUYING..." : "\(Constants.gameCostNums) NUMS")
+                                .font(.system(size: 20, weight: .black, design: .rounded))
                                 .foregroundColor(Color(red: 0.2, green: 0.15, blue: 0.4))
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 18)
                         .background(
                             LinearGradient(
                                 colors: [Color.yellow, Color.orange],
@@ -111,26 +95,44 @@ struct GameSelectionSheet: View {
                                 endPoint: .bottom
                             )
                         )
-                        .cornerRadius(12)
+                        .cornerRadius(16)
+                        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
                     }
                     .disabled(isBuyingGame)
                     
-                    // Play with USD - $1.13
-                    Button(action: {
-                        // TODO: Play with USD action
-                    }) {
-                        Text("$1.13")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.white.opacity(0.5))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Color.white.opacity(0.2))
-                            .cornerRadius(12)
+                    // Secondary options row
+                    HStack(spacing: 12) {
+                        // Share on X - Free
+                        Button(action: {
+                            // TODO: Share on X action
+                        }) {
+                            Text("Share on X")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.5))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.white.opacity(0.1))
+                                .cornerRadius(12)
+                        }
+                        .disabled(true)
+                        
+                        // Play with USD - $1.13
+                        Button(action: {
+                            // TODO: Play with USD action
+                        }) {
+                            Text("$1.13")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.5))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.white.opacity(0.1))
+                                .cornerRadius(12)
+                        }
+                        .disabled(true)
                     }
-                    .disabled(true)
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 16)
+                .padding(.bottom, 4)
                 
                 if dojoManager.isLoadingGames {
                     // Loading state
