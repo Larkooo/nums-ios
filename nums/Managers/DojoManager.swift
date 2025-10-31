@@ -331,7 +331,7 @@ class DojoManager: ObservableObject {
     private let gameTokenMintAddress = Constants.gameAddress // Game contract address for "Minted By" filter
     
     // Subscription tracking
-    private var tournamentSubscriptionId: UInt64?
+    private var tournamentAndPrizeSubscriptionId: UInt64?
     private var leaderboardSubscriptionId: UInt64?
     private var tokenBalanceSubscriptionId: UInt64?
     private var gameSubscriptions: [String: UInt64] = [:] // game_id -> subscription_id
@@ -371,7 +371,7 @@ class DojoManager: ObservableObject {
             }
             
             // Start subscriptions
-            await subscribeTournaments()
+            await subscribeTournamentsAndPrizes()
             
             // Fetch leaderboard using SQL
             if let tournamentId = selectedTournament?.id {
@@ -1191,60 +1191,114 @@ class DojoManager: ObservableObject {
     
     // MARK: - Subscriptions
     
-    private func subscribeTournaments() async {
+    private func subscribeTournamentsAndPrizes() async {
         guard let client = toriiClient else {
             print("⚠️ Torii client not initialized for subscription")
             return
         }
         
         do {
-            print("🔔 Subscribing to tournament updates...")
+            print("🔔 Subscribing to tournament and prize updates...")
             
-            // Create callback for tournament updates
+            // Create unified callback for both tournaments and prizes
             let callback = EntityCallback { [weak self] entity in
                 guard let self = self else { return }
                 
-                print("🏆 Tournament entity update received")
+                // Check which model type this entity is
+                let modelNames = entity.models.map { $0.name }
                 
-                // Parse the updated tournament
-                if let updatedTournament = self.parseTournament(from: entity) {
-                    Task { @MainActor in
-                        // Update tournament in list
-                        if let index = self.tournaments.firstIndex(where: { $0.id == updatedTournament.id }) {
-                            self.tournaments[index] = updatedTournament
-                            
-                            // Update selected tournament if it matches
-                            if self.selectedTournament?.id == updatedTournament.id {
-                                self.selectedTournament = updatedTournament
+                if modelNames.contains("NUMS-Tournament") {
+                    print("🏆 Tournament entity update received")
+                    
+                    // Parse the updated tournament
+                    if let updatedTournament = self.parseTournament(from: entity) {
+                        Task { @MainActor in
+                            // Update tournament in list
+                            if let index = self.tournaments.firstIndex(where: { $0.id == updatedTournament.id }) {
+                                self.tournaments[index] = updatedTournament
+                                
+                                // Update selected tournament if it matches
+                                if self.selectedTournament?.id == updatedTournament.id {
+                                    self.selectedTournament = updatedTournament
+                                }
+                            } else {
+                                // New tournament, add to list
+                                self.tournaments.append(updatedTournament)
+                                self.tournaments.sort { $0.id < $1.id }
                             }
-                        } else {
-                            // New tournament, add to list
-                            self.tournaments.append(updatedTournament)
+                            print("✅ Tournament updated: #\(updatedTournament.id)")
                         }
-                        print("✅ Tournament updated: #\(updatedTournament.id)")
+                    }
+                }
+                
+                if modelNames.contains("NUMS-Prize") {
+                    print("💎 Prize entity update received")
+                    
+                    // Parse the updated prize
+                    if let updatedPrize = self.parsePrize(from: entity) {
+                        Task { @MainActor in
+                            // Update prize in the prizes dictionary
+                            if self.prizes[updatedPrize.tournamentId] == nil {
+                                self.prizes[updatedPrize.tournamentId] = []
+                            }
+                            
+                            // Check if prize already exists (update) or is new (add)
+                            if let index = self.prizes[updatedPrize.tournamentId]?.firstIndex(where: { $0.id == updatedPrize.id }) {
+                                // Update existing prize, preserve custom token name if already fetched
+                                var prizeToUpdate = updatedPrize
+                                if let existingCustomName = self.prizes[updatedPrize.tournamentId]?[index].customTokenName {
+                                    prizeToUpdate.customTokenName = existingCustomName
+                                }
+                                self.prizes[updatedPrize.tournamentId]?[index] = prizeToUpdate
+                                print("✅ Prize updated: \(updatedPrize.id)")
+                            } else {
+                                // New prize, add to list
+                                self.prizes[updatedPrize.tournamentId]?.append(updatedPrize)
+                                print("✅ New prize added: \(updatedPrize.id)")
+                                
+                                // Fetch token name if it's an unknown token
+                                let isKnown = updatedPrize.address.lowercased() == Constants.strkTokenAddress.lowercased() ||
+                                              updatedPrize.address.lowercased() == Constants.ethTokenAddress.lowercased()
+                                if !isKnown && self.tokenNameCache[updatedPrize.address] == nil {
+                                    Task {
+                                        if let tokenName = await self.fetchTokenName(address: updatedPrize.address) {
+                                            await MainActor.run {
+                                                self.tokenNameCache[updatedPrize.address] = tokenName
+                                                
+                                                // Update the prize with the fetched name
+                                                if let prizeIndex = self.prizes[updatedPrize.tournamentId]?.firstIndex(where: { $0.id == updatedPrize.id }) {
+                                                    self.prizes[updatedPrize.tournamentId]?[prizeIndex].customTokenName = tokenName
+                                                    print("✅ Fetched token name: \(tokenName) for new prize")
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
             
-            // Create keys clause to filter for NUMS-Tournament model only
+            // Create keys clause to filter for both NUMS-Tournament and NUMS-Prize models
             let keysClause = KeysClause(
                 keys: [],
                 patternMatching: .variableLen,
-                models: ["NUMS-Tournament"]
+                models: ["NUMS-Tournament", "NUMS-Prize"]
             )
             let clause = Clause.keys(clause: keysClause)
             
-            // Subscribe to all NUMS-Tournament entities
+            // Subscribe to both model types with a single subscription
             let subscriptionId = try client.subscribeEntityUpdates(
                 clause: clause,
                 worldAddresses: [],
                 callback: callback
             )
             
-            tournamentSubscriptionId = subscriptionId
-            print("✅ Subscribed to tournaments (ID: \(subscriptionId))")
+            tournamentAndPrizeSubscriptionId = subscriptionId
+            print("✅ Subscribed to tournaments and prizes (ID: \(subscriptionId))")
         } catch {
-            print("❌ Tournament subscription error: \(error)")
+            print("❌ Tournament and prize subscription error: \(error)")
         }
     }
     
